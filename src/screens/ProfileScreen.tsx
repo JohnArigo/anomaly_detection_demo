@@ -219,13 +219,13 @@ export const ProfileScreen = ({
           <Panel title="Badge Outcomes">
             <div className="outcomes">
               <div className="outcome">
-                <span className="outcome__label">Approved</span>
+                <span className="outcome__label">Approved </span>
                 <span className="outcome__value">
                   {formatNumber(person.approvedCount)}
                 </span>
               </div>
               <div className="outcome outcome--danger">
-                <span className="outcome__label">Denied</span>
+                <span className="outcome__label">Denied </span>
                 <span className="outcome__value">
                   {formatNumber(person.deniedCount)}
                 </span>

@@ -317,9 +317,7 @@ const deriveStatus = (params: {
   if (params.anomalyScore > 70) reasons.push("Anomaly score elevated");
 
   const statusLabel =
-    params.anomalyScore > 75 || params.denialPercent > 18
-      ? "DELINQUENT"
-      : "WATCH";
+    params.anomalyScore > 75 || params.denialPercent > 18 ? "ALERT" : "WATCH";
   return {
     statusLabel,
     reasons: reasons.length === 0 ? ["Within expected baseline"] : reasons,
