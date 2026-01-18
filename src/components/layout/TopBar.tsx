@@ -1,19 +1,21 @@
-import { type PersonOption, PersonSelect } from "../ui/PersonSelect";
+import type { PersonOption } from "../ui/PersonSelect";
+import { PersonSelect } from "../ui/PersonSelect";
+import type { View } from "../../types/navigation";
 
 type TopBarProps = {
-  activeView: "home" | "profile" | "denials";
-  onViewChange: (view: "home" | "profile" | "denials") => void;
+  activeView: View;
+  onNavigate: (view: View) => void;
   people: PersonOption[];
   selectedPersonId: string;
-  onPersonChange: (id: string) => void;
+  onSelectPerson: (id: string) => void;
 };
 
 export const TopBar = ({
   activeView,
-  onViewChange,
+  onNavigate,
   people,
   selectedPersonId,
-  onPersonChange,
+  onSelectPerson,
 }: TopBarProps) => {
   return (
     <header className="topbar">
@@ -24,38 +26,28 @@ export const TopBar = ({
       <nav className="topbar__nav" aria-label="Primary">
         <button
           type="button"
-          className={`nav-button ${
-            activeView === "home" ? "nav-button--active" : ""
-          }`.trim()}
-          onClick={() => onViewChange("home")}
+          className={`nav-button ${activeView === "home" ? "nav-button--active" : ""}`.trim()}
+          onClick={() => onNavigate("home")}
         >
           Home
         </button>
         <button
           type="button"
-          className={`nav-button ${
-            activeView === "profile" ? "nav-button--active" : ""
-          }`.trim()}
-          onClick={() => onViewChange("profile")}
+          className={`nav-button ${activeView === "profile" ? "nav-button--active" : ""}`.trim()}
+          onClick={() => onNavigate("profile")}
         >
           Profile
         </button>
         <button
           type="button"
-          className={`nav-button ${
-            activeView === "denials" ? "nav-button--active" : ""
-          }`.trim()}
-          onClick={() => onViewChange("denials")}
+          className={`nav-button ${activeView === "denial" ? "nav-button--active" : ""}`.trim()}
+          onClick={() => onNavigate("denial")}
         >
           Denial Breakdown
         </button>
       </nav>
       <div className="topbar__actions">
-        <PersonSelect
-          value={selectedPersonId}
-          options={people}
-          onChange={onPersonChange}
-        />
+        <PersonSelect value={selectedPersonId} options={people} onChange={onSelectPerson} />
       </div>
     </header>
   );

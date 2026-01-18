@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { PersonProfile, BadgeEvent } from "../data/types";
+import type { BadgeEvent } from "../data/types";
 import { formatDate, formatTime } from "../utils/date";
 import { formatNumber, formatPercent, formatScore } from "../utils/format";
 import { BadgePill } from "../components/ui/BadgePill";
@@ -9,6 +9,15 @@ import { Tabs } from "../components/ui/Tabs";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ScreenHeader } from "../components/layout/ScreenHeader";
+import { badgeEvents, baseNow, peopleBase } from "../data/mock";
+import { buildProfiles } from "../data/rollups";
+import { createDefaultFilters } from "../utils/range";
+import { percentileRank } from "../utils/math";
+import { getPersonById } from "../data/selectors";
+
+type ProfileScreenProps = {
+  personId: string | null;
+};
 
 const entropyLabel = (value: number) => {
   if (value >= 2.6) return "Unusually High";
@@ -23,29 +32,37 @@ const percentDiffLabel = (value: number, avg: number) => {
   return `${sign}${diff.toFixed(1)}% vs avg`;
 };
 
-type ProfileScreenProps = {
-  person: PersonProfile;
-  avgDeniedPercent: number;
-  isoPercentile: number;
-  anomalyPercentile: number;
-};
-
-export const ProfileScreen = ({
-  person,
-  avgDeniedPercent,
-  isoPercentile,
-  anomalyPercentile,
-}: ProfileScreenProps) => {
+export const ProfileScreen = ({ personId }: ProfileScreenProps) => {
   const [activeTab, setActiveTab] = useState("all");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
-  const tabs = [
-    { id: "all", label: "All" },
-    { id: "approved", label: "Approved" },
-    { id: "denied", label: "Denied" },
-    { id: "after-hours", label: "After-Hours" },
-    { id: "flagged", label: "Flagged" },
-  ];
+  const filters = useMemo(() => createDefaultFilters(baseNow), []);
+  const { profiles } = useMemo(
+    () => buildProfiles(peopleBase, badgeEvents, filters),
+    [filters],
+  );
+
+  const person = useMemo(() => getPersonById(personId, peopleBase, badgeEvents), [personId]);
+
+  const avgDeniedPercent = useMemo(() => {
+    if (profiles.length === 0) return 0;
+    const total = profiles.reduce((sum, profile) => sum + profile.denialPercent, 0);
+    return total / profiles.length;
+  }, [profiles]);
+
+  const isoScores = useMemo(() => profiles.map((profile) => profile.isolationForestScore), [profiles]);
+  const anomalyScores = useMemo(() => profiles.map((profile) => profile.anomalyScore), [profiles]);
+
+  if (!person) {
+    return (
+      <section className="screen">
+        <EmptyState title="Select a person" description="Choose a person from Home or the selector." />
+      </section>
+    );
+  }
+
+  const isoPercentile = percentileRank(isoScores, person.isolationForestScore);
+  const anomalyPercentile = percentileRank(anomalyScores, person.anomalyScore);
 
   const filteredEvents = useMemo(() => {
     const events = person.recentEvents;
@@ -74,31 +91,24 @@ export const ProfileScreen = ({
         map.set(label, [event]);
       }
     }
-    return Array.from(map.entries()).map(([date, events]) => ({
-      date,
-      events,
-    }));
+    return Array.from(map.entries()).map(([date, events]) => ({ date, events }));
   }, [filteredEvents]);
 
   const afterHoursCount = useMemo(() => {
-    return person.recentEvents.filter((event) =>
-      event.flags.includes("After-Hours")
-    ).length;
+    return person.recentEvents.filter((event) => event.flags.includes("After-Hours")).length;
   }, [person.recentEvents]);
 
   const afterHoursDays = useMemo(() => {
     const days = new Set(
       person.recentEvents
         .filter((event) => event.flags.includes("After-Hours"))
-        .map((event) => formatDate(event.timestamp))
+        .map((event) => formatDate(event.timestamp)),
     );
     return days.size;
   }, [person.recentEvents]);
 
   const recentDenied = useMemo(() => {
-    return person.recentEvents
-      .filter((event) => event.outcome === "denied")
-      .slice(0, 5);
+    return person.recentEvents.filter((event) => event.outcome === "denied").slice(0, 5);
   }, [person.recentEvents]);
 
   return (
@@ -107,7 +117,7 @@ export const ProfileScreen = ({
         title={<h1 className="screen-title">{person.name}</h1>}
         meta={[
           `Last Badge: ${formatDate(person.lastBadgeTimestamp)} ${formatTime(
-            person.lastBadgeTimestamp
+            person.lastBadgeTimestamp,
           )}`,
           `Active Window: ${person.activeWindowLabel}`,
           `Total Events: ${formatNumber(person.totalEvents)}`,
@@ -116,32 +126,31 @@ export const ProfileScreen = ({
 
       <div className="kpi-grid">
         <KpiTile
-          label="Anomaly Score"
+          kpiId="anomalyScore"
           value={person.anomalyScore}
           sublabel={`${anomalyPercentile}th percentile`}
           accent={person.anomalyScore > 70 ? "danger" : "primary"}
         />
         <KpiTile
-          label="Isolation Forest"
+          kpiId="isolationForest"
           value={formatScore(person.isolationForestScore, 2)}
           sublabel={`${isoPercentile}th percentile`}
           accent={person.isolationForestScore > 7 ? "warning" : "primary"}
         />
         <KpiTile
-          label="Shannon Entropy"
+          kpiId="shannonEntropy"
           value={formatScore(person.shannonEntropy, 2)}
           sublabel={entropyLabel(person.shannonEntropy)}
         />
         <KpiTile
-          label="Denied Rate"
+          kpiId="deniedRate"
           value={formatPercent(person.denialPercent, 1)}
           sublabel={percentDiffLabel(person.denialPercent, avgDeniedPercent)}
-          accent={
-            person.denialPercent > avgDeniedPercent + 5 ? "warning" : "primary"
-          }
+          accent={person.denialPercent > avgDeniedPercent + 5 ? "warning" : "primary"}
+          comparison={percentDiffLabel(person.denialPercent, avgDeniedPercent)}
         />
         <KpiTile
-          label="After-Hours Rate"
+          kpiId="afterHoursRate"
           value={`${afterHoursCount} / ${afterHoursDays}`}
           sublabel={formatPercent(person.afterHoursRate, 1)}
           accent={person.afterHoursRate > 18 ? "danger" : "primary"}
@@ -150,7 +159,17 @@ export const ProfileScreen = ({
 
       <div className="profile-layout">
         <div className="profile-feed">
-          <Tabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
+          <Tabs
+            tabs={[
+              { id: "all", label: "All" },
+              { id: "approved", label: "Approved" },
+              { id: "denied", label: "Denied" },
+              { id: "after-hours", label: "After-Hours" },
+              { id: "flagged", label: "Flagged" },
+            ]}
+            activeId={activeTab}
+            onChange={setActiveTab}
+          />
           <div className="feed">
             {groupedEvents.length === 0 && (
               <EmptyState title="No events" description="Try another filter." />
@@ -164,35 +183,25 @@ export const ProfileScreen = ({
                     <button
                       key={event.id}
                       type="button"
-                      className={`feed__row ${
-                        isHighlighted ? "feed__row--active" : ""
-                      }`.trim()}
+                      className={`feed__row ${isHighlighted ? "feed__row--active" : ""}`.trim()}
                       onClick={() => {
                         if (event.outcome === "denied") {
                           setHighlightedId(event.id);
                         }
                       }}
                     >
-                      <div className="feed__time">
-                        {formatTime(event.timestamp)}
-                      </div>
+                      <div className="feed__time">{formatTime(event.timestamp)}</div>
                       <div className="feed__scanner">{event.scannerName}</div>
                       <div className="feed__pills">
                         <BadgePill
-                          label={
-                            event.outcome === "approved" ? "Approved" : "Denied"
-                          }
-                          variant={
-                            event.outcome === "approved" ? "approved" : "denied"
-                          }
+                          label={event.outcome === "approved" ? "Approved" : "Denied"}
+                          variant={event.outcome === "approved" ? "approved" : "denied"}
                         />
                         {event.flags.map((flag) => (
                           <BadgePill
                             key={`${event.id}-${flag}`}
                             label={flag}
-                            variant={
-                              flag === "After-Hours" ? "after-hours" : "flag"
-                            }
+                            variant={flag === "After-Hours" ? "after-hours" : "flag"}
                           />
                         ))}
                       </div>
@@ -219,16 +228,12 @@ export const ProfileScreen = ({
           <Panel title="Badge Outcomes">
             <div className="outcomes">
               <div className="outcome">
-                <span className="outcome__label">Approved </span>
-                <span className="outcome__value">
-                  {formatNumber(person.approvedCount)}
-                </span>
+                <span className="outcome__label">Approved</span>
+                <span className="outcome__value">{formatNumber(person.approvedCount)}</span>
               </div>
               <div className="outcome outcome--danger">
-                <span className="outcome__label">Denied </span>
-                <span className="outcome__value">
-                  {formatNumber(person.deniedCount)}
-                </span>
+                <span className="outcome__label">Denied</span>
+                <span className="outcome__value">{formatNumber(person.deniedCount)}</span>
               </div>
             </div>
             <div className="subsection-title">Recent Denied Events</div>
@@ -239,9 +244,7 @@ export const ProfileScreen = ({
                 {recentDenied.map((event) => (
                   <div key={`denied-${event.id}`} className="list__row">
                     <span>{event.scannerName}</span>
-                    <span className="list__value">
-                      {formatTime(event.timestamp)}
-                    </span>
+                    <span className="list__value">{formatTime(event.timestamp)}</span>
                   </div>
                 ))}
               </div>
@@ -250,10 +253,7 @@ export const ProfileScreen = ({
         </div>
       </div>
 
-      <StatusBanner
-        status={person.statusLabel}
-        reasons={person.statusReasons}
-      />
+      <StatusBanner status={person.statusLabel} reasons={person.statusReasons} />
     </section>
   );
 };

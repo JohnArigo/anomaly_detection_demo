@@ -41,6 +41,13 @@ export type BadgeEvent = {
   deviceId: string;
 };
 
+export type PersonId = string;
+
+export type PersonBase = {
+  id: PersonId;
+  name: string;
+};
+
 export type PersonProfile = {
   id: string;
   name: string;
@@ -62,4 +69,32 @@ export type PersonProfile = {
   topFlags: FlagStat[];
   statusLabel: string;
   statusReasons: string[];
+};
+
+export type PersonRollup = {
+  id: string;
+  name: string;
+  anomalyScore: number;
+  isolationForestScore: number;
+  shannonEntropy: number;
+  denialPercent: number;
+  lastBadgeTimestamp: string;
+  activeWindowLabel: string;
+  totalEvents: number;
+};
+
+export type DenialBreakdownModel = {
+  totalDenied: number;
+  denialReasons: DenialReasonStat[];
+  topFlags: FlagStat[];
+  recentDeniedEvents: BadgeEvent[];
+};
+
+export type PersonnelSummary = {
+  totalPersonnel: number;
+  totalEvents: number;
+  avgAnomaly: number;
+  afterHoursEvents: number;
+  afterHoursDays: number;
+  activeWindowLabel: string;
 };

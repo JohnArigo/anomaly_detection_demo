@@ -456,6 +456,13 @@
   color: var(--muted);
 }
 
+.kpi__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .kpi__value {
   font-size: var(--text-2xl);
   font-weight: 600;
@@ -465,6 +472,75 @@
 .kpi__sublabel {
   font-size: var(--text-sm);
   color: var(--muted);
+}
+
+.tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip__trigger {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 36, 0.2);
+  background: var(--panel-muted);
+  color: var(--muted-strong);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip__trigger:hover {
+  border-color: rgba(28, 109, 208, 0.4);
+  color: var(--accent);
+}
+
+.tooltip__bubble {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: min(280px, 90vw);
+  padding: var(--space-3);
+  background: #111827;
+  color: var(--text-inverse);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-overlay);
+}
+
+.tooltip__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.tooltip__section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tooltip__title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tooltip__text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tooltip__formula {
+  font-family: \"SFMono-Regular\", Consolas, \"Liberation Mono\", Menlo, monospace;
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .kpi--danger {
@@ -842,6 +918,11 @@
   display: flex;
   gap: var(--space-1);
   flex-wrap: wrap;
+}
+
+.row--active {
+  outline: 2px solid rgba(28, 109, 208, 0.4);
+  outline-offset: -2px;
 }
 
 .icon-button {

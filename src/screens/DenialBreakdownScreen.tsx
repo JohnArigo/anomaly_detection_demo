@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { type PersonProfile } from "../data/types";
 import { formatDate, formatTime } from "../utils/date";
 import { formatNumber, formatPercent } from "../utils/format";
 import { ScreenHeader } from "../components/layout/ScreenHeader";
@@ -9,6 +8,8 @@ import { BadgePill } from "../components/ui/BadgePill";
 import { Table } from "../components/ui/Table";
 import { IconButton } from "../components/ui/IconButton";
 import { EmptyState } from "../components/ui/EmptyState";
+import { badgeEvents, peopleBase } from "../data/mock";
+import { getPersonById } from "../data/selectors";
 
 const reasonColors: Record<string, string> = {
   "Expired Badge": "var(--danger)",
@@ -19,12 +20,20 @@ const reasonColors: Record<string, string> = {
 };
 
 type DenialBreakdownScreenProps = {
-  person: PersonProfile;
+  personId: string | null;
 };
 
-export const DenialBreakdownScreen = ({
-  person,
-}: DenialBreakdownScreenProps) => {
+export const DenialBreakdownScreen = ({ personId }: DenialBreakdownScreenProps) => {
+  const person = useMemo(() => getPersonById(personId, peopleBase, badgeEvents), [personId]);
+
+  if (!person) {
+    return (
+      <section className="screen">
+        <EmptyState title="Select a person" description="Choose a person to view denial details." />
+      </section>
+    );
+  }
+
   const totalDenied = person.deniedCount;
   const donutData = person.denialReasons.map((reason) => ({
     label: reason.reason,
@@ -41,9 +50,7 @@ export const DenialBreakdownScreen = ({
         event.scannerName,
         event.denialReason ?? "Unknown",
         <div key={`flags-${event.id}`} className="table__pills">
-          {event.flags.length === 0 && (
-            <BadgePill label="None" variant="neutral" />
-          )}
+          {event.flags.length === 0 && <BadgePill label="None" variant="neutral" />}
           {event.flags.map((flag) => (
             <BadgePill
               key={`${event.id}-${flag}`}
@@ -62,7 +69,7 @@ export const DenialBreakdownScreen = ({
         title={<h1 className="screen-title">Badge Denial Breakdown</h1>}
         meta={[
           `Last Badge: ${formatDate(person.lastBadgeTimestamp)} ${formatTime(
-            person.lastBadgeTimestamp
+            person.lastBadgeTimestamp,
           )}`,
           `Total Denied Attempts: ${formatNumber(totalDenied)}`,
         ]}
@@ -77,10 +84,7 @@ export const DenialBreakdownScreen = ({
 
         <Panel title="Denial Reasons">
           {person.denialReasons.length === 0 ? (
-            <EmptyState
-              title="No denied events"
-              description="No breakdown available."
-            />
+            <EmptyState title="No denied events" description="No breakdown available." />
           ) : (
             <div className="list">
               {person.denialReasons.map((reason) => (
@@ -90,10 +94,8 @@ export const DenialBreakdownScreen = ({
                     {formatNumber(reason.count)}
                     <span className="list__muted">
                       {formatPercent(
-                        totalDenied === 0
-                          ? 0
-                          : (reason.count / totalDenied) * 100,
-                        1
+                        totalDenied === 0 ? 0 : (reason.count / totalDenied) * 100,
+                        1,
                       )}
                     </span>
                   </span>
@@ -110,9 +112,7 @@ export const DenialBreakdownScreen = ({
               {person.topFlags.slice(0, 6).map((flag) => (
                 <div key={flag.flag} className="list__row">
                   <span className="list__label">{flag.flag}</span>
-                  <span className="list__value">
-                    {formatNumber(flag.count)}
-                  </span>
+                  <span className="list__value">{formatNumber(flag.count)}</span>
                 </div>
               ))}
             </div>
@@ -125,14 +125,10 @@ export const DenialBreakdownScreen = ({
             {person.denialReasons.slice(0, 4).map((reason) => (
               <div key={`mirror-${reason.reason}`} className="list__row">
                 <span>{reason.reason}</span>
-                <span className="list__value">
-                  {formatNumber(reason.count)}
-                </span>
+                <span className="list__value">{formatNumber(reason.count)}</span>
               </div>
             ))}
-            {person.denialReasons.length === 0 && (
-              <EmptyState title="No denies" />
-            )}
+            {person.denialReasons.length === 0 && <EmptyState title="No denies" />}
           </div>
           <div className="subsection-title">Top Flags</div>
           <div className="list">

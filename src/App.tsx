@@ -4,62 +4,59 @@ import { TopBar } from "./components/layout/TopBar";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { DenialBreakdownScreen } from "./screens/DenialBreakdownScreen";
-import { people as peopleData } from "./data/mock";
-import { percentileRank } from "./utils/math";
+import { badgeEvents, baseNow, peopleBase } from "./data/mock";
+import { buildPersonRollup, buildProfiles } from "./data/rollups";
+import { createDefaultFilters } from "./utils/range";
+import type { View } from "./types/navigation";
+import type { PersonId } from "./data/types";
 
 export const App = () => {
-  const [view, setView] = useState<"home" | "profile" | "denials">("home");
-  const [personId, setPersonId] = useState(peopleData[0]?.id ?? "");
+  const [activeView, setActiveView] = useState<View>("home");
+  const [activePersonId, setActivePersonId] = useState<PersonId | null>(
+    peopleBase[0]?.id ?? null,
+  );
 
-  const selectedPerson = useMemo(() => {
-    return peopleData.find((person) => person.id === personId) ?? peopleData[0];
-  }, [personId]);
+  const filters = useMemo(() => createDefaultFilters(baseNow), []);
+  const { profiles, summary } = useMemo(
+    () => buildProfiles(peopleBase, badgeEvents, filters),
+    [filters],
+  );
+  const rollups = useMemo(() => profiles.map(buildPersonRollup), [profiles]);
 
   const peopleOptions = useMemo(() => {
-    return peopleData.map((person) => ({ id: person.id, name: person.name }));
-  }, [peopleData]);
+    return peopleBase.map((person) => ({ id: person.id, name: person.name }));
+  }, []);
 
-  const isoScores = useMemo(
-    () => peopleData.map((person) => person.isolationForestScore),
-    [peopleData],
-  );
-  const anomalyScores = useMemo(
-    () => peopleData.map((person) => person.anomalyScore),
-    [peopleData],
-  );
-  const avgDeniedPercent = useMemo(() => {
-    if (peopleData.length === 0) return 0;
-    const total = peopleData.reduce((sum, person) => sum + person.denialPercent, 0);
-    return total / peopleData.length;
-  }, [peopleData]);
+  const onSelectPerson = (personId: PersonId) => {
+    setActivePersonId(personId);
+  };
 
-  if (!selectedPerson) return null;
-
-  const isoPercentile = percentileRank(isoScores, selectedPerson.isolationForestScore);
-  const anomalyPercentile = percentileRank(anomalyScores, selectedPerson.anomalyScore);
+  const onNavigate = (view: View) => {
+    setActiveView(view);
+  };
 
   return (
     <AppShell
       topBar={
         <TopBar
-          activeView={view}
-          onViewChange={setView}
+          activeView={activeView}
+          onNavigate={onNavigate}
           people={peopleOptions}
-          selectedPersonId={selectedPerson.id}
-          onPersonChange={setPersonId}
+          selectedPersonId={activePersonId ?? ""}
+          onSelectPerson={onSelectPerson}
         />
       }
     >
-      {view === "home" && <HomeScreen people={peopleData} />}
-      {view === "profile" && (
-        <ProfileScreen
-          person={selectedPerson}
-          avgDeniedPercent={avgDeniedPercent}
-          isoPercentile={isoPercentile}
-          anomalyPercentile={anomalyPercentile}
+      {activeView === "home" && (
+        <HomeScreen
+          rollups={rollups}
+          summary={summary}
+          onSelectPerson={onSelectPerson}
+          onNavigate={onNavigate}
         />
       )}
-      {view === "denials" && <DenialBreakdownScreen person={selectedPerson} />}
+      {activeView === "profile" && <ProfileScreen personId={activePersonId} />}
+      {activeView === "denial" && <DenialBreakdownScreen personId={activePersonId} />}
     </AppShell>
   );
 };

@@ -1,10 +1,11 @@
-import { useMemo } from "react";
-import type { PersonProfile } from "../data/types";
-import { formatDate, formatTime, isAfterHours } from "../utils/date";
+import { useMemo, useState } from "react";
+import type { PersonRollup, PersonnelSummary } from "../data/types";
+import { formatDate, formatTime } from "../utils/date";
 import { formatNumber, formatPercent, formatScore } from "../utils/format";
 import { Panel } from "../components/ui/Panel";
 import { FilterChip } from "../components/ui/FilterChip";
 import { BadgePill } from "../components/ui/BadgePill";
+import type { View } from "../types/navigation";
 
 const entropyLabel = (value: number) => {
   if (value >= 2.6) return "High";
@@ -19,41 +20,31 @@ const anomalyTone = (value: number) => {
 };
 
 type HomeScreenProps = {
-  people: PersonProfile[];
+  rollups: PersonRollup[];
+  summary: PersonnelSummary;
+  onSelectPerson: (personId: string) => void;
+  onNavigate: (view: View) => void;
 };
 
-export const HomeScreen = ({ people }: HomeScreenProps) => {
-  const totalPersonnel = people.length;
-
-  const aggregates = useMemo(() => {
-    const totalEvents = people.reduce((sum, person) => sum + person.totalEvents, 0);
-    const avgAnomaly =
-      people.length === 0
-        ? 0
-        : people.reduce((sum, person) => sum + person.anomalyScore, 0) / people.length;
-    const afterHoursEvents = people.reduce((sum, person) => {
-      return (
-        sum + person.recentEvents.filter((event) => isAfterHours(event.timestamp)).length
-      );
-    }, 0);
-    const afterHoursDates = new Set(
-      people.flatMap((person) =>
-        person.recentEvents
-          .filter((event) => isAfterHours(event.timestamp))
-          .map((event) => formatDate(event.timestamp)),
-      ),
-    );
-
-    return {
-      totalEvents,
-      avgAnomaly,
-      afterHoursEvents,
-      afterHoursDays: afterHoursDates.size,
-    };
-  }, [people]);
-
-  const visiblePeople = useMemo(() => people.slice(0, 11), [people]);
+export const HomeScreen = ({ rollups, summary, onSelectPerson, onNavigate }: HomeScreenProps) => {
+  const totalPersonnel = rollups.length;
+  const visiblePeople = useMemo(() => rollups.slice(0, 11), [rollups]);
   const highlightedPeople = useMemo(() => visiblePeople.slice(0, 2), [visiblePeople]);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  const activatePerson = (personId: string) => {
+    onSelectPerson(personId);
+    onNavigate("profile");
+    setHighlightedId(personId);
+    window.setTimeout(() => setHighlightedId(null), 700);
+  };
+
+  const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>, personId: string) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activatePerson(personId);
+    }
+  };
 
   return (
     <section className="home">
@@ -162,16 +153,16 @@ export const HomeScreen = ({ people }: HomeScreenProps) => {
             </div>
             <div className="kpi-mini">
               <div className="kpi-mini__label">Total Events</div>
-              <div className="kpi-mini__value">{formatNumber(aggregates.totalEvents)}</div>
+              <div className="kpi-mini__value">{formatNumber(summary.totalEvents)}</div>
             </div>
             <div className="kpi-mini">
               <div className="kpi-mini__label">Avg Anomaly</div>
-              <div className="kpi-mini__value">{formatScore(aggregates.avgAnomaly, 1)}</div>
+              <div className="kpi-mini__value">{formatScore(summary.avgAnomaly, 1)}</div>
             </div>
             <div className="kpi-mini">
               <div className="kpi-mini__label">After-Hours</div>
               <div className="kpi-mini__value">
-                {formatNumber(aggregates.afterHoursEvents)} / {formatNumber(aggregates.afterHoursDays)}
+                {formatNumber(summary.afterHoursEvents)} / {formatNumber(summary.afterHoursDays)}
               </div>
             </div>
           </div>
@@ -209,7 +200,15 @@ export const HomeScreen = ({ people }: HomeScreenProps) => {
                 </thead>
                 <tbody>
                   {visiblePeople.map((person) => (
-                    <tr key={person.id}>
+                    <tr
+                      key={person.id}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Open ${person.name}`}
+                      className={highlightedId === person.id ? "row--active" : undefined}
+                      onClick={() => activatePerson(person.id)}
+                      onKeyDown={(event) => onRowKeyDown(event, person.id)}
+                    >
                       <td>
                         <div className="person-cell">
                           <div className="avatar">{person.name.charAt(0)}</div>
@@ -241,7 +240,14 @@ export const HomeScreen = ({ people }: HomeScreenProps) => {
                         </div>
                       </td>
                       <td>
-                        <button type="button" className="btn btn--ghost btn--small">
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--small"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            activatePerson(person.id);
+                          }}
+                        >
                           Open
                         </button>
                       </td>
