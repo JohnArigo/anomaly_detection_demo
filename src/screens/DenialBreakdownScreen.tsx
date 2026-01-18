@@ -5,7 +5,6 @@ import { ScreenHeader } from "../components/layout/ScreenHeader";
 import { Panel } from "../components/ui/Panel";
 import { DonutChart } from "../components/ui/DonutChart";
 import { BadgePill } from "../components/ui/BadgePill";
-import { Table } from "../components/ui/Table";
 import { IconButton } from "../components/ui/IconButton";
 import { EmptyState } from "../components/ui/EmptyState";
 import { badgeEvents, peopleBase } from "../data/mock";
@@ -21,9 +20,13 @@ const reasonColors: Record<string, string> = {
 
 type DenialBreakdownScreenProps = {
   personId: string | null;
+  highlightedEventId: string | null;
 };
 
-export const DenialBreakdownScreen = ({ personId }: DenialBreakdownScreenProps) => {
+export const DenialBreakdownScreen = ({
+  personId,
+  highlightedEventId,
+}: DenialBreakdownScreenProps) => {
   const person = useMemo(() => getPersonById(personId, peopleBase, badgeEvents), [personId]);
 
   if (!person) {
@@ -40,28 +43,6 @@ export const DenialBreakdownScreen = ({ personId }: DenialBreakdownScreenProps) 
     value: reason.count,
     color: reasonColors[reason.reason] ?? "var(--muted)",
   }));
-
-  const deniedRows = useMemo(() => {
-    return person.recentEvents
-      .filter((event) => event.outcome === "denied")
-      .slice(0, 12)
-      .map((event) => [
-        `${formatDate(event.timestamp)} ${formatTime(event.timestamp)}`,
-        event.scannerName,
-        event.denialReason ?? "Unknown",
-        <div key={`flags-${event.id}`} className="table__pills">
-          {event.flags.length === 0 && <BadgePill label="None" variant="neutral" />}
-          {event.flags.map((flag) => (
-            <BadgePill
-              key={`${event.id}-${flag}`}
-              label={flag}
-              variant={flag === "After-Hours" ? "after-hours" : "flag"}
-            />
-          ))}
-        </div>,
-        <IconButton key={`icon-${event.id}`} label="Dismiss" icon="X" />,
-      ]);
-  }, [person.recentEvents]);
 
   return (
     <section className="screen">
@@ -144,11 +125,58 @@ export const DenialBreakdownScreen = ({ personId }: DenialBreakdownScreenProps) 
       </div>
 
       <Panel title="Most Recent Denied Events">
-        <Table
-          ariaLabel="Most recent denied events"
-          headers={["Timestamp", "Scanner", "Denial Reason", "Flags", ""]}
-          rows={deniedRows}
-        />
+        <div className="table">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Scanner</th>
+                <th>Denial Reason</th>
+                <th>Flags</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {person.recentEvents
+                .filter((event) => event.outcome === "denied")
+                .slice(0, 12)
+                .map((event) => (
+                  <tr
+                    key={event.id}
+                    className={highlightedEventId === event.id ? "row--active" : undefined}
+                  >
+                    <td>{`${formatDate(event.timestamp)} ${formatTime(event.timestamp)}`}</td>
+                    <td>{event.scannerName}</td>
+                    <td>{event.denialReason ?? "Unknown"}</td>
+                    <td>
+                      <div className="table__pills">
+                        {event.flags.length === 0 && (
+                          <BadgePill label="None" variant="neutral" />
+                        )}
+                        {event.flags.map((flag) => (
+                          <BadgePill
+                            key={`${event.id}-${flag}`}
+                            label={flag}
+                            variant={flag === "After-Hours" ? "after-hours" : "flag"}
+                          />
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      <IconButton label="Dismiss" icon="X" />
+                    </td>
+                  </tr>
+                ))}
+              {person.deniedCount === 0 && (
+                <tr>
+                  <td colSpan={5} className="table__empty">
+                    No denied events available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </Panel>
     </section>
   );

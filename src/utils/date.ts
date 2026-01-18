@@ -38,3 +38,9 @@ export const isAfterHours = (value: string | Date) => {
   const hour = date.getHours();
   return hour < 6 || hour >= 19;
 };
+
+export const toLocalDateKey = (value: string | Date) => {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};

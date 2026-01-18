@@ -6,7 +6,7 @@ import type {
   PersonRollup,
   PersonnelSummary,
 } from "./types";
-import { filterEvents, filterPeople, type FilterState } from "../utils/filters";
+import { filterEvents, filterPeople, normalizeAnomalyRange, type FilterState } from "../utils/filters";
 import { sortEventsByTimestampDesc } from "../utils/sort";
 import {
   denialReasonStats,
@@ -16,9 +16,9 @@ import {
   rate,
   shannonEntropy,
   uniqueRatio,
+  anomalyScoreFromIso,
 } from "./metrics";
-import { isAfterHours, isWeekend } from "../utils/date";
-import { anomalyScoreFromIso } from "./metrics";
+import { isAfterHours, isWeekend, toLocalDateKey } from "../utils/date";
 
 const deriveStatus = (params: {
   anomalyScore: number;
@@ -147,7 +147,7 @@ export const buildPersonnelSummary = (
 ): PersonnelSummary => {
   const afterHoursEvents = events.filter((event) => isAfterHours(event.timestamp));
   const afterHoursDays = new Set(
-    afterHoursEvents.map((event) => event.timestamp.split("T")[0]),
+    afterHoursEvents.map((event) => toLocalDateKey(event.timestamp)),
   ).size;
 
   const totalEvents = profiles.reduce((sum, profile) => sum + profile.totalEvents, 0);
@@ -173,25 +173,28 @@ export const buildProfiles = (
 ) => {
   const filteredPeople = filterPeople(people, filters);
   const filteredEvents = filterEvents(events, filters);
+  const normalizedRange = normalizeAnomalyRange(filters.anomalyRange);
 
-  const profiles = filteredPeople.map((person) => {
-    const personEvents = filteredEvents.filter((event) => event.personId === person.id);
-    return buildPersonProfile(
-      person,
-      personEvents,
-      filters.dateRange.label,
-      filters.dateRange.end,
-    );
-  });
-
-  const anomalyFiltered = profiles.filter(
-    (profile) =>
-      profile.anomalyScore >= filters.anomalyRange.min &&
-      profile.anomalyScore <= filters.anomalyRange.max,
-  );
+  const profiles = filteredPeople
+    .map((person) => {
+      const personEvents = filteredEvents.filter((event) => event.personId === person.id);
+      return buildPersonProfile(
+        person,
+        personEvents,
+        filters.dateRange.label,
+        filters.dateRange.end,
+      );
+    })
+    .filter((profile) => {
+      if (!filters.includeZeroEvents && profile.totalEvents === 0) return false;
+      return (
+        profile.anomalyScore >= normalizedRange.min &&
+        profile.anomalyScore <= normalizedRange.max
+      );
+    });
 
   return {
-    profiles: anomalyFiltered,
-    summary: buildPersonnelSummary(filteredEvents, anomalyFiltered, filters.dateRange.label),
+    profiles,
+    summary: buildPersonnelSummary(filteredEvents, profiles, filters.dateRange.label),
   };
 };

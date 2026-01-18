@@ -3,7 +3,7 @@ import type { BadgeEvent, DenialReason, FlagType, PersonBase } from "./types";
 import { isAfterHours, isWeekend } from "../utils/date";
 import { clamp } from "../utils/math";
 
-const scanners = [
+export const scanners = [
   { id: "SC-100", name: "HQ North Lobby" },
   { id: "SC-101", name: "HQ South Lobby" },
   { id: "SC-102", name: "Annex 2F West" },
@@ -36,13 +36,14 @@ const peopleSeeds = [
     id: "p-02",
     name: "Malik Johnson",
     traits: {
-      denialBias: 0.02,
+      denialBias: -0.08,
       afterHoursBias: 0.04,
-      weekendBias: 0.08,
+      weekendBias: 0.06,
       entropyBias: 0.1,
       newLocationBias: 0.05,
       rapidRepeatBias: 0.04,
       deviceVariance: 0.2,
+      forceNoDenied: true,
     },
   },
   {
@@ -62,20 +63,21 @@ const peopleSeeds = [
     id: "p-04",
     name: "Sofia Alvarez",
     traits: {
-      denialBias: 0.01,
-      afterHoursBias: 0.06,
+      denialBias: -0.06,
+      afterHoursBias: 0.05,
       weekendBias: 0.05,
       entropyBias: 0.2,
       newLocationBias: 0.08,
       rapidRepeatBias: 0.04,
       deviceVariance: 0.15,
+      forceNoDenied: true,
     },
   },
   {
     id: "p-05",
     name: "Omar Rahman",
     traits: {
-      denialBias: 0.1,
+      denialBias: 0.12,
       afterHoursBias: 0.12,
       weekendBias: 0.18,
       entropyBias: 0.3,
@@ -127,7 +129,7 @@ const peopleSeeds = [
     id: "p-09",
     name: "Ivy Thompson",
     traits: {
-      denialBias: 0.06,
+      denialBias: 0.09,
       afterHoursBias: 0.22,
       weekendBias: 0.2,
       entropyBias: 0.45,
@@ -179,12 +181,12 @@ const weightedReason = (rng: () => number): DenialReason => {
 
 const findWeekendOffset = (rng: () => number, now: Date) => {
   const offsets: number[] = [];
-  for (let i = 0; i < 30; i += 1) {
+  for (let i = 0; i < 90; i += 1) {
     const date = new Date(now);
     date.setDate(now.getDate() - i);
     if (isWeekend(date)) offsets.push(i);
   }
-  return offsets.length === 0 ? randomInt(rng, 0, 29) : pick(rng, offsets);
+  return offsets.length === 0 ? randomInt(rng, 0, 89) : pick(rng, offsets);
 };
 
 const generateEvents = (
@@ -194,7 +196,7 @@ const generateEvents = (
 ) => {
   const rng = mulberry32(seed);
   const now = new Date(baseNow);
-  const totalEvents = randomInt(rng, 120, 210);
+  const totalEvents = randomInt(rng, 140, 240);
   const preferredLocations = pickUnique(rng, scanners, 3).map((scanner) => scanner.id);
 
   const devicePoolSize = clamp(Math.round(12 + traits.deviceVariance * 25), 8, 40);
@@ -207,7 +209,7 @@ const generateEvents = (
 
   for (let i = 0; i < totalEvents; i += 1) {
     const useWeekend = rng() < traits.weekendBias;
-    const dayOffset = useWeekend ? findWeekendOffset(rng, now) : randomInt(rng, 0, 29);
+    const dayOffset = useWeekend ? findWeekendOffset(rng, now) : randomInt(rng, 0, 89);
     const date = new Date(now);
     date.setDate(now.getDate() - dayOffset);
 
@@ -230,8 +232,8 @@ const generateEvents = (
       ? pick(rng, scanners.filter((scanner) => preferredLocations.includes(scanner.id)))
       : pick(rng, scanners);
 
-    const denialRate = clamp(0.06 + traits.denialBias, 0.01, 0.45);
-    const denied = rng() < denialRate;
+    const baseRate = clamp(0.06 + traits.denialBias, 0, 0.45);
+    const denied = traits.forceNoDenied ? false : rng() < baseRate;
     const flags: FlagType[] = [];
     if (isAfterHours(date)) flags.push("After-Hours");
 

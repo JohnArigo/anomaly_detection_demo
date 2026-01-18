@@ -14,9 +14,12 @@ import { buildProfiles } from "../data/rollups";
 import { createDefaultFilters } from "../utils/range";
 import { percentileRank } from "../utils/math";
 import { getPersonById } from "../data/selectors";
+import type { View } from "../types/navigation";
 
 type ProfileScreenProps = {
   personId: string | null;
+  onNavigate: (view: View) => void;
+  onHighlightEvent: (eventId: string | null) => void;
 };
 
 const entropyLabel = (value: number) => {
@@ -32,7 +35,7 @@ const percentDiffLabel = (value: number, avg: number) => {
   return `${sign}${diff.toFixed(1)}% vs avg`;
 };
 
-export const ProfileScreen = ({ personId }: ProfileScreenProps) => {
+export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: ProfileScreenProps) => {
   const [activeTab, setActiveTab] = useState("all");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
@@ -50,8 +53,14 @@ export const ProfileScreen = ({ personId }: ProfileScreenProps) => {
     return total / profiles.length;
   }, [profiles]);
 
-  const isoScores = useMemo(() => profiles.map((profile) => profile.isolationForestScore), [profiles]);
-  const anomalyScores = useMemo(() => profiles.map((profile) => profile.anomalyScore), [profiles]);
+  const isoScores = useMemo(
+    () => profiles.map((profile) => profile.isolationForestScore),
+    [profiles],
+  );
+  const anomalyScores = useMemo(
+    () => profiles.map((profile) => profile.anomalyScore),
+    [profiles],
+  );
 
   if (!person) {
     return (
@@ -187,6 +196,8 @@ export const ProfileScreen = ({ personId }: ProfileScreenProps) => {
                       onClick={() => {
                         if (event.outcome === "denied") {
                           setHighlightedId(event.id);
+                          onHighlightEvent(event.id);
+                          onNavigate("denial");
                         }
                       }}
                     >
