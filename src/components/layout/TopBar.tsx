@@ -1,8 +1,8 @@
 import { type PersonOption, PersonSelect } from "../ui/PersonSelect";
 
 type TopBarProps = {
-  activeView: "profile" | "denials";
-  onViewChange: (view: "profile" | "denials") => void;
+  activeView: "home" | "profile" | "denials";
+  onViewChange: (view: "home" | "profile" | "denials") => void;
   people: PersonOption[];
   selectedPersonId: string;
   onPersonChange: (id: string) => void;
@@ -22,6 +22,15 @@ export const TopBar = ({
         <div className="topbar__subtitle">Badge Intelligence</div>
       </div>
       <nav className="topbar__nav" aria-label="Primary">
+        <button
+          type="button"
+          className={`nav-button ${
+            activeView === "home" ? "nav-button--active" : ""
+          }`.trim()}
+          onClick={() => onViewChange("home")}
+        >
+          Home
+        </button>
         <button
           type="button"
           className={`nav-button ${

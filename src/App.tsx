@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { TopBar } from "./components/layout/TopBar";
+import { HomeScreen } from "./screens/HomeScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { DenialBreakdownScreen } from "./screens/DenialBreakdownScreen";
 import { people as peopleData } from "./data/mock";
 import { percentileRank } from "./utils/math";
 
 export const App = () => {
-  const [view, setView] = useState<"profile" | "denials">("profile");
+  const [view, setView] = useState<"home" | "profile" | "denials">("home");
   const [personId, setPersonId] = useState(peopleData[0]?.id ?? "");
 
   const selectedPerson = useMemo(() => {
@@ -49,16 +50,16 @@ export const App = () => {
         />
       }
     >
-      {view === "profile" ? (
+      {view === "home" && <HomeScreen people={peopleData} />}
+      {view === "profile" && (
         <ProfileScreen
           person={selectedPerson}
           avgDeniedPercent={avgDeniedPercent}
           isoPercentile={isoPercentile}
           anomalyPercentile={anomalyPercentile}
         />
-      ) : (
-        <DenialBreakdownScreen person={selectedPerson} />
       )}
+      {view === "denials" && <DenialBreakdownScreen person={selectedPerson} />}
     </AppShell>
   );
 };
