@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { TopBar } from "./components/layout/TopBar";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { DenialBreakdownModal } from "./components/ui/DenialBreakdownModal";
 import { badgeEvents, baseNow, peopleBase } from "./data/mock";
-import { listMonthKeys, toMonthKey } from "./data/monthly";
+import { buildMonthlySummaries, listMonthKeys, toMonthKey } from "./data/monthly";
 import type { View } from "./types/navigation";
 import type { PersonId } from "./data/types";
 
@@ -31,6 +31,10 @@ export const App = () => {
     monthKey: null,
     highlightedEventId: null,
   });
+  const monthRoster = useMemo(
+    () => buildMonthlySummaries(peopleBase, badgeEvents, activeMonthKey),
+    [activeMonthKey],
+  );
 
   const onSelectPerson = (personId: PersonId) => {
     setActivePersonId(personId);
@@ -66,9 +70,16 @@ export const App = () => {
         <TopBar
           activeView={activeView}
           onNavigate={onNavigate}
-          people={peopleBase.map((person) => ({ id: person.id, name: person.name }))}
+          people={monthRoster.map((person) => ({ id: person.personId, name: person.name }))}
           selectedPersonId={activePersonId ?? ""}
-          onSelectPerson={onSelectPerson}
+          onSelectPerson={(personId) => {
+            setActivePersonId(personId);
+            setActiveView("profile");
+          }}
+          monthKey={activeMonthKey}
+          monthOptions={listMonthKeys(badgeEvents)}
+          onMonthChange={setActiveMonthKey}
+          onBack={() => setActiveView("home")}
         />
       }
     >

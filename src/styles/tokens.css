@@ -1,50 +1,104 @@
 :root {
-  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --bg-0: #05070c;
+  --bg-1: #070b12;
+  --surface-0: #05070c;
+  --surface-1: #0b1220;
+  --surface-2: #101a2e;
+  --surface-3: #16243d;
 
-  --bg: #0f1724;
-  --surface: #eef2f7;
-  --panel: #ffffff;
-  --panel-muted: #f7f9fc;
+  --text-1: #e7eefc;
+  --text-2: #b9c7e6;
+  --text-3: #7f93bc;
+  --text-invert: #05070c;
 
-  --text: #0f1724;
-  --text-inverse: #f5f7fb;
-  --muted: #667085;
-  --muted-strong: #445166;
+  --border-1: rgba(255, 255, 255, 0.06);
+  --border-2: rgba(255, 255, 255, 0.12);
+  --border-3: rgba(255, 255, 255, 0.18);
 
-  --accent: #1c6dd0;
-  --accent-soft: #dbe8fb;
-  --danger: #d64545;
-  --danger-soft: #fde3e3;
-  --warn: #e6a100;
-  --warn-soft: #fff0cc;
-  --success: #1f9254;
-  --success-soft: #dff3e8;
-  --info: #3b82f6;
-  --info-soft: #e1ecff;
+  --accent: #59d6ff;
+  --accent-2: #22c7a6;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --danger: #ff5c7a;
+  --warn: #ffcc66;
+  --ok: #7be495;
 
-  --shadow-sm: 0 6px 16px rgba(15, 23, 36, 0.08);
-  --shadow-md: 0 12px 28px rgba(15, 23, 36, 0.12);
+  --danger-bg: rgba(255, 92, 122, 0.12);
+  --warn-bg: rgba(255, 204, 102, 0.12);
+  --ok-bg: rgba(123, 228, 149, 0.1);
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 20px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 34px rgba(0, 0, 0, 0.45);
 
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-md: 15px;
-  --text-lg: 18px;
-  --text-xl: 22px;
-  --text-2xl: 28px;
-  --text-3xl: 34px;
+  --r-1: 10px;
+  --r-2: 14px;
+  --r-3: 18px;
+
+  --s-1: 6px;
+  --s-2: 10px;
+  --s-3: 14px;
+  --s-4: 18px;
+  --s-5: 24px;
+  --s-6: 32px;
+
+  --fs-0: 12px;
+  --fs-1: 13px;
+  --fs-2: 15px;
+  --fs-3: 18px;
+  --fs-4: 22px;
+
+  --focus: 0 0 0 2px rgba(89, 214, 255, 0.35), 0 0 0 4px rgba(89, 214, 255, 0.14);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 120ms;
+  --t-med: 160ms;
+
+  --app-bg: var(--bg-0);
+  --page-bg: var(--surface-1);
+  --panel-bg: var(--surface-2);
+  --panel-hover: var(--surface-3);
+  --panel-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 45%);
+
+  --text-primary: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --text-inverse: var(--text-invert);
+
+  --border-subtle: var(--border-1);
+  --border-default: var(--border-2);
+  --border-strong: var(--border-3);
+
+  --accent-primary: var(--accent);
+  --accent-secondary: var(--accent-2);
+
+  --status-danger: var(--danger);
+  --status-warn: var(--warn);
+  --status-ok: var(--ok);
+
+  --status-danger-bg: var(--danger-bg);
+  --status-warn-bg: var(--warn-bg);
+  --status-ok-bg: var(--ok-bg);
+
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+
+  --radius-sm: var(--r-1);
+  --radius-md: var(--r-2);
+  --radius-lg: var(--r-3);
+
+  --space-1: var(--s-1);
+  --space-2: var(--s-2);
+  --space-3: var(--s-3);
+  --space-4: var(--s-4);
+  --space-5: var(--s-5);
+  --space-6: var(--s-6);
+
+  --text-xs: var(--fs-0);
+  --text-sm: var(--fs-1);
+  --text-md: var(--fs-2);
+  --text-lg: var(--fs-3);
+  --text-xl: var(--fs-4);
+  --text-2xl: 26px;
+  --text-3xl: 32px;
 
   --z-header: 10;
   --z-overlay: 40;
@@ -56,20 +110,22 @@
 
 body {
   margin: 0;
-  font-family: var(--font-sans);
-  background: var(--surface);
-  color: var(--text);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: var(--app-bg);
+  color: var(--text-primary);
   line-height: 1.4;
 }
 
 button,
-select {
+select,
+input,
+textarea {
   font-family: inherit;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus);
 }
 
 .sr-only {
@@ -81,4 +137,12 @@ select {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -160,6 +160,8 @@ export const HomeScreen = ({
     () => sortRows(filteredRows, sortKey, sortDir),
     [filteredRows, sortKey, sortDir],
   );
+  const pageSize = 100;
+  const pageRows = useMemo(() => sortedRows.slice(0, pageSize), [sortedRows]);
 
   const summary = useMemo(() => {
     const totalEvents = filteredRows.reduce((sum, row) => sum + row.totalEvents, 0);
@@ -764,13 +766,13 @@ export const HomeScreen = ({
               />
             ))}
             <span className="chip-row__meta">
-              Showing {sortedRows.length} of {monthlyRows.length}
+              Showing {pageRows.length} of {monthlyRows.length}
             </span>
           </div>
 
           <Panel title="Personnel">
-            <div className="table">
-              {sortedRows.length === 0 ? (
+            <div className="table roster-table">
+              {pageRows.length === 0 ? (
                 <EmptyState title="No results" description="Try adjusting filters." />
               ) : (
                 <table className="person-table">
@@ -866,7 +868,7 @@ export const HomeScreen = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedRows.map((person) => (
+                    {pageRows.map((person) => (
                       <tr
                         key={`${person.monthKey}-${person.personId}`}
                         tabIndex={0}
