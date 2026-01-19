@@ -15,6 +15,12 @@ const anomalyTone = (value: number) => {
   return "neutral";
 };
 
+const severityTone = (value: number) => {
+  if (value >= 90) return "delinquent";
+  if (value >= 70) return "watch";
+  return "normal";
+};
+
 type RangeFilter = { min: string; max: string };
 
 type HomeFilters = {
@@ -776,95 +782,174 @@ export const HomeScreen = ({
                 <EmptyState title="No results" description="Try adjusting filters." />
               ) : (
                 <table className="person-table">
+                  <colgroup>
+                    <col style={{ width: "22%" }} />
+                    <col style={{ width: "9%" }} />
+                    <col style={{ width: "9%" }} />
+                    <col style={{ width: "9%" }} />
+                    <col style={{ width: "9%" }} />
+                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "7%" }} />
+                    <col style={{ width: "7%" }} />
+                    <col style={{ width: "7%" }} />
+                    <col style={{ width: "11%" }} />
+                    <col style={{ width: "6%" }} />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th>
-                        <button type="button" className="th-button" onClick={() => onSort("name")}>
+                      <th
+                        className="th-name"
+                        aria-sort={sortKey === "name" ? sortDir : "none"}
+                      >
+                        <button
+                          type="button"
+                          className={`th-button ${
+                            sortKey === "name" ? `th-button--sorted ${sortDir}` : ""
+                          }`.trim()}
+                          onClick={() => onSort("name")}
+                        >
                           Name
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "anomalyScore" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "anomalyScore"
+                              ? `th-button--sorted ${sortDir}`
+                              : ""
+                          }`.trim()}
                           onClick={() => onSort("anomalyScore")}
                         >
                           Anomaly
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "shannonEntropy" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "shannonEntropy"
+                              ? `th-button--sorted ${sortDir}`
+                              : ""
+                          }`.trim()}
                           onClick={() => onSort("shannonEntropy")}
                         >
                           Entropy
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "deniedRate" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "deniedRate" ? `th-button--sorted ${sortDir}` : ""
+                          }`.trim()}
                           onClick={() => onSort("deniedRate")}
                         >
                           Denied Rate
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "afterHoursRate" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "afterHoursRate"
+                              ? `th-button--sorted ${sortDir}`
+                              : ""
+                          }`.trim()}
                           onClick={() => onSort("afterHoursRate")}
                         >
                           After-Hours
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "weekendRate" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "weekendRate" ? `th-button--sorted ${sortDir}` : ""
+                          }`.trim()}
                           onClick={() => onSort("weekendRate")}
                         >
                           Weekend
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "uniqueDeviceCount" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "uniqueDeviceCount"
+                              ? `th-button--sorted ${sortDir}`
+                              : ""
+                          }`.trim()}
                           onClick={() => onSort("uniqueDeviceCount")}
                         >
                           Devices
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "rapidBadgingCount" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "rapidBadgingCount"
+                              ? `th-button--sorted ${sortDir}`
+                              : ""
+                          }`.trim()}
                           onClick={() => onSort("rapidBadgingCount")}
                         >
                           Rapid
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-num"
+                        aria-sort={sortKey === "daysActive" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "daysActive" ? `th-button--sorted ${sortDir}` : ""
+                          }`.trim()}
                           onClick={() => onSort("daysActive")}
                         >
                           Days Active
                         </button>
                       </th>
-                      <th>
+                      <th
+                        className="th-date"
+                        aria-sort={sortKey === "lastEventTimestamp" ? sortDir : "none"}
+                      >
                         <button
                           type="button"
-                          className="th-button"
+                          className={`th-button ${
+                            sortKey === "lastEventTimestamp"
+                              ? `th-button--sorted ${sortDir}`
+                              : ""
+                          }`.trim()}
                           onClick={() => onSort("lastEventTimestamp")}
                         >
                           Last Event
                         </button>
                       </th>
-                      <th></th>
+                      <th className="th-action"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -874,11 +959,12 @@ export const HomeScreen = ({
                         tabIndex={0}
                         role="button"
                         aria-label={`Open ${person.name}`}
+                        data-severity={severityTone(person.anomalyScore)}
                         className={highlightedId === person.personId ? "row--active" : undefined}
                         onClick={() => activatePerson(person.personId)}
                         onKeyDown={(event) => onRowKeyDown(event, person.personId)}
                       >
-                        <td>
+                        <td className="cell cell--name">
                           <div className="person-cell">
                             <div className="avatar">{person.name.charAt(0)}</div>
                             <div>
@@ -887,7 +973,7 @@ export const HomeScreen = ({
                             </div>
                           </div>
                         </td>
-                        <td>
+                        <td className="cell cell--num">
                           <span
                             className={`anomaly-chip anomaly-chip--${anomalyTone(
                               person.anomalyScore,
@@ -896,14 +982,16 @@ export const HomeScreen = ({
                             {person.anomalyScore}
                           </span>
                         </td>
-                        <td>{formatScore(person.shannonEntropy, 2)}</td>
-                        <td>{formatPercent(person.deniedRate, 1)}</td>
-                        <td>{formatPercent(person.afterHoursRate, 1)}</td>
-                        <td>{formatPercent(person.weekendRate, 1)}</td>
-                        <td>{formatNumber(person.uniqueDeviceCount)}</td>
-                        <td>{formatNumber(person.rapidBadgingCount)}</td>
-                        <td>{formatNumber(person.badgedDays.length)}</td>
-                        <td>
+                        <td className="cell cell--num">{formatScore(person.shannonEntropy, 2)}</td>
+                        <td className="cell cell--num">{formatPercent(person.deniedRate, 1)}</td>
+                        <td className="cell cell--num">
+                          {formatPercent(person.afterHoursRate, 1)}
+                        </td>
+                        <td className="cell cell--num">{formatPercent(person.weekendRate, 1)}</td>
+                        <td className="cell cell--num">{formatNumber(person.uniqueDeviceCount)}</td>
+                        <td className="cell cell--num">{formatNumber(person.rapidBadgingCount)}</td>
+                        <td className="cell cell--num">{formatNumber(person.badgedDays.length)}</td>
+                        <td className="cell cell--date">
                           <div className="last-badge">
                             <span>{formatDate(person.lastEventTimestamp)}</span>
                             <span className="last-badge__time">
@@ -911,7 +999,7 @@ export const HomeScreen = ({
                             </span>
                           </div>
                         </td>
-                        <td>
+                        <td className="cell cell--action">
                           <button
                             type="button"
                             className="btn btn--ghost btn--small"

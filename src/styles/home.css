@@ -1,0 +1,137 @@
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.sidebar .panel {
+  position: sticky;
+  top: 92px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.filter-tabs {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.filters-panel .panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  padding-right: var(--space-2);
+}
+
+.filter-section {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--panel-bg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+}
+
+.filter-title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.filter-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.filter-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  justify-content: flex-end;
+}
+
+.home-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.home-header__title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.home-header__subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.home-header__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.kpi-mini {
+  background: var(--panel-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  background-image: var(--panel-sheen);
+}
+
+.kpi-mini__label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.kpi-mini__value {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.chip-row__meta {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+}

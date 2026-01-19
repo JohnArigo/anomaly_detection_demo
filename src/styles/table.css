@@ -1,0 +1,247 @@
+.table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.roster-table {
+  max-height: 440px;
+  overflow: auto;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+table.person-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: var(--text-sm);
+}
+
+table.person-table th,
+table.person-table td {
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+table.person-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-default);
+}
+
+table.person-table tbody tr:nth-child(even) {
+  background: var(--surface-2);
+}
+
+.person-table th,
+.person-table td {
+  padding: 12px var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.person-table tbody tr {
+  height: 54px;
+  position: relative;
+}
+
+.person-table tbody tr::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 5px;
+  border-radius: 999px;
+  background: var(--border-default);
+}
+
+.person-table tbody tr[data-severity="watch"]::before {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--status-warn),
+    var(--status-warn) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.person-table tbody tr[data-severity="delinquent"]::before {
+  background: var(--status-danger);
+}
+
+.person-table tbody tr:hover {
+  background: var(--panel-hover);
+}
+
+.person-table tbody tr:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+  box-shadow: 0 0 0 2px var(--panel-bg);
+}
+
+.cell--name {
+  text-align: left;
+}
+
+.cell--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell--date {
+  text-align: right;
+}
+
+.cell--action {
+  text-align: right;
+}
+
+.th-name {
+  text-align: left;
+}
+
+.th-num,
+.th-date,
+.th-action {
+  text-align: right;
+}
+
+.th-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 14px 0 0;
+  background: transparent;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.th-button--sorted::after {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.th-button--sorted.asc::after {
+  content: "▲";
+}
+
+.th-button--sorted.desc::after {
+  content: "▼";
+}
+
+.table__empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: var(--space-4);
+}
+
+.table__pills {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.row--active {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+.person-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--accent-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.person-name {
+  font-weight: 600;
+}
+
+.person-sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.anomaly-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.anomaly-chip--danger {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+
+.anomaly-chip--warning {
+  background: var(--status-warn-bg);
+  color: var(--status-warn);
+}
+
+.anomaly-chip--neutral {
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+.entropy-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entropy-sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.last-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.last-badge__time {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
