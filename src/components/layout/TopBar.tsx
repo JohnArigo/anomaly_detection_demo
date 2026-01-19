@@ -38,13 +38,6 @@ export const TopBar = ({
         >
           Profile
         </button>
-        <button
-          type="button"
-          className={`nav-button ${activeView === "denial" ? "nav-button--active" : ""}`.trim()}
-          onClick={() => onNavigate("denial")}
-        >
-          Denial Breakdown
-        </button>
       </nav>
       <div className="topbar__actions">
         <PersonSelect value={selectedPersonId} options={people} onChange={onSelectPerson} />

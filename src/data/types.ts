@@ -83,6 +83,27 @@ export type PersonRollup = {
   totalEvents: number;
 };
 
+export type MonthlyPersonSummary = {
+  personId: string;
+  name: string;
+  monthKey: string;
+  lastEventTimestamp: string;
+  anomalyScore: number;
+  shannonEntropy: number;
+  deniedRate: number;
+  weekendRate: number;
+  afterHoursRate: number;
+  uniqueDeviceStdDev: number;
+  uniqueDeviceCount: number;
+  uniqueDevices: string[];
+  denialReasons: DenialReasonStat[];
+  totalEvents: number;
+  acceptedCount: number;
+  deniedCount: number;
+  rapidBadgingCount: number;
+  badgedDays: number[];
+};
+
 export type DenialBreakdownModel = {
   totalDenied: number;
   denialReasons: DenialReasonStat[];

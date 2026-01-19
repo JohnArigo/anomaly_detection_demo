@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BadgeEvent } from "../data/types";
 import { formatDate, formatTime } from "../utils/date";
 import { formatNumber, formatPercent, formatScore } from "../utils/format";
@@ -9,17 +9,16 @@ import { Tabs } from "../components/ui/Tabs";
 import { StatusBanner } from "../components/ui/StatusBanner";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ScreenHeader } from "../components/layout/ScreenHeader";
-import { badgeEvents, baseNow, peopleBase } from "../data/mock";
-import { buildProfiles } from "../data/rollups";
-import { createDefaultFilters } from "../utils/range";
+import { badgeEvents, peopleBase } from "../data/mock";
+import { buildMonthlySummaries, getMonthlyRow, toMonthKey } from "../data/monthly";
 import { percentileRank } from "../utils/math";
-import { getPersonById } from "../data/selectors";
-import type { View } from "../types/navigation";
+import { locationStats } from "../data/metrics";
 
 type ProfileScreenProps = {
   personId: string | null;
-  onNavigate: (view: View) => void;
-  onHighlightEvent: (eventId: string | null) => void;
+  monthKey: string;
+  denialModalOpen: boolean;
+  onOpenDenialModal: (personId: string, monthKey: string, highlightedEventId?: string | null) => void;
 };
 
 const entropyLabel = (value: number) => {
@@ -35,34 +34,59 @@ const percentDiffLabel = (value: number, avg: number) => {
   return `${sign}${diff.toFixed(1)}% vs avg`;
 };
 
-export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: ProfileScreenProps) => {
+const deriveStatus = (params: {
+  anomalyScore: number;
+  deniedRate: number;
+  afterHoursRate: number;
+  rapidBadgingCount: number;
+}) => {
+  const reasons: string[] = [];
+  if (params.deniedRate > 14) reasons.push("High denied rate");
+  if (params.afterHoursRate > 18) reasons.push("After-hours surge");
+  if (params.rapidBadgingCount > 6) reasons.push("Rapid repeat attempts");
+  if (params.anomalyScore > 70) reasons.push("Anomaly score elevated");
+
+  const statusLabel =
+    params.anomalyScore > 75 || params.deniedRate > 18 ? "DELINQUENT" : "WATCH";
+  return {
+    statusLabel,
+    reasons: reasons.length === 0 ? ["Within expected baseline"] : reasons,
+  };
+};
+
+export const ProfileScreen = ({
+  personId,
+  monthKey,
+  denialModalOpen,
+  onOpenDenialModal,
+}: ProfileScreenProps) => {
   const [activeTab, setActiveTab] = useState("all");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [openedFromKpi, setOpenedFromKpi] = useState(false);
+  const deniedRateRef = useRef<HTMLDivElement | null>(null);
+  const prevModalOpen = useRef(denialModalOpen);
 
-  const filters = useMemo(() => createDefaultFilters(baseNow), []);
-  const { profiles } = useMemo(
-    () => buildProfiles(peopleBase, badgeEvents, filters),
-    [filters],
+  const monthlyRows = useMemo(
+    () => buildMonthlySummaries(peopleBase, badgeEvents, monthKey),
+    [monthKey],
+  );
+  const monthlyRow = useMemo(
+    () => getMonthlyRow(personId, monthKey, peopleBase, badgeEvents),
+    [personId, monthKey],
   );
 
-  const person = useMemo(() => getPersonById(personId, peopleBase, badgeEvents), [personId]);
+  const avgDeniedRate = useMemo(() => {
+    if (monthlyRows.length === 0) return 0;
+    const total = monthlyRows.reduce((sum, row) => sum + row.deniedRate, 0);
+    return total / monthlyRows.length;
+  }, [monthlyRows]);
 
-  const avgDeniedPercent = useMemo(() => {
-    if (profiles.length === 0) return 0;
-    const total = profiles.reduce((sum, profile) => sum + profile.denialPercent, 0);
-    return total / profiles.length;
-  }, [profiles]);
-
-  const isoScores = useMemo(
-    () => profiles.map((profile) => profile.isolationForestScore),
-    [profiles],
-  );
   const anomalyScores = useMemo(
-    () => profiles.map((profile) => profile.anomalyScore),
-    [profiles],
+    () => monthlyRows.map((row) => row.anomalyScore),
+    [monthlyRows],
   );
 
-  if (!person) {
+  if (!monthlyRow) {
     return (
       <section className="screen">
         <EmptyState title="Select a person" description="Choose a person from Home or the selector." />
@@ -70,11 +94,17 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
     );
   }
 
-  const isoPercentile = percentileRank(isoScores, person.isolationForestScore);
-  const anomalyPercentile = percentileRank(anomalyScores, person.anomalyScore);
+  const anomalyPercentile = percentileRank(anomalyScores, monthlyRow.anomalyScore);
+
+  const drilldownEvents = useMemo(() => {
+    if (!personId) return [];
+    return badgeEvents
+      .filter((event) => event.personId === personId && toMonthKey(event.timestamp) === monthKey)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [personId, monthKey]);
 
   const filteredEvents = useMemo(() => {
-    const events = person.recentEvents;
+    const events = drilldownEvents;
     switch (activeTab) {
       case "approved":
         return events.filter((event) => event.outcome === "approved");
@@ -87,7 +117,7 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
       default:
         return events;
     }
-  }, [activeTab, person.recentEvents]);
+  }, [activeTab, drilldownEvents]);
 
   const groupedEvents = useMemo(() => {
     const map = new Map<string, BadgeEvent[]>();
@@ -103,66 +133,80 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
     return Array.from(map.entries()).map(([date, events]) => ({ date, events }));
   }, [filteredEvents]);
 
-  const afterHoursCount = useMemo(() => {
-    return person.recentEvents.filter((event) => event.flags.includes("After-Hours")).length;
-  }, [person.recentEvents]);
-
-  const afterHoursDays = useMemo(() => {
-    const days = new Set(
-      person.recentEvents
-        .filter((event) => event.flags.includes("After-Hours"))
-        .map((event) => formatDate(event.timestamp)),
-    );
-    return days.size;
-  }, [person.recentEvents]);
-
   const recentDenied = useMemo(() => {
-    return person.recentEvents.filter((event) => event.outcome === "denied").slice(0, 5);
-  }, [person.recentEvents]);
+    return drilldownEvents.filter((event) => event.outcome === "denied").slice(0, 5);
+  }, [drilldownEvents]);
+
+  const scannerLocations = useMemo(
+    () => locationStats(drilldownEvents).slice(0, 6),
+    [drilldownEvents],
+  );
+
+  const status = deriveStatus({
+    anomalyScore: monthlyRow.anomalyScore,
+    deniedRate: monthlyRow.deniedRate,
+    afterHoursRate: monthlyRow.afterHoursRate,
+    rapidBadgingCount: monthlyRow.rapidBadgingCount,
+  });
+
+  useEffect(() => {
+    if (prevModalOpen.current && !denialModalOpen && openedFromKpi) {
+      deniedRateRef.current?.focus();
+    }
+    prevModalOpen.current = denialModalOpen;
+  }, [denialModalOpen, openedFromKpi]);
+
+  const openDeniedFromKpi = () => {
+    setOpenedFromKpi(true);
+    onOpenDenialModal(monthlyRow.personId, monthKey);
+  };
 
   return (
     <section className="screen">
       <ScreenHeader
-        title={<h1 className="screen-title">{person.name}</h1>}
+        title={<h1 className="screen-title">{monthlyRow.name}</h1>}
         meta={[
-          `Last Badge: ${formatDate(person.lastBadgeTimestamp)} ${formatTime(
-            person.lastBadgeTimestamp,
+          `Last Badge: ${formatDate(monthlyRow.lastEventTimestamp)} ${formatTime(
+            monthlyRow.lastEventTimestamp,
           )}`,
-          `Active Window: ${person.activeWindowLabel}`,
-          `Total Events: ${formatNumber(person.totalEvents)}`,
+          `Month: ${monthKey}`,
+          `Total Events: ${formatNumber(monthlyRow.totalEvents)}`,
         ]}
       />
 
       <div className="kpi-grid">
         <KpiTile
           kpiId="anomalyScore"
-          value={person.anomalyScore}
+          value={monthlyRow.anomalyScore}
           sublabel={`${anomalyPercentile}th percentile`}
-          accent={person.anomalyScore > 70 ? "danger" : "primary"}
-        />
-        <KpiTile
-          kpiId="isolationForest"
-          value={formatScore(person.isolationForestScore, 2)}
-          sublabel={`${isoPercentile}th percentile`}
-          accent={person.isolationForestScore > 7 ? "warning" : "primary"}
+          accent={monthlyRow.anomalyScore > 70 ? "danger" : "primary"}
         />
         <KpiTile
           kpiId="shannonEntropy"
-          value={formatScore(person.shannonEntropy, 2)}
-          sublabel={entropyLabel(person.shannonEntropy)}
+          value={formatScore(monthlyRow.shannonEntropy, 2)}
+          sublabel={entropyLabel(monthlyRow.shannonEntropy)}
         />
         <KpiTile
           kpiId="deniedRate"
-          value={formatPercent(person.denialPercent, 1)}
-          sublabel={percentDiffLabel(person.denialPercent, avgDeniedPercent)}
-          accent={person.denialPercent > avgDeniedPercent + 5 ? "warning" : "primary"}
-          comparison={percentDiffLabel(person.denialPercent, avgDeniedPercent)}
+          value={formatPercent(monthlyRow.deniedRate, 1)}
+          sublabel={percentDiffLabel(monthlyRow.deniedRate, avgDeniedRate)}
+          accent={monthlyRow.deniedRate > avgDeniedRate + 5 ? "warning" : "primary"}
+          comparison={percentDiffLabel(monthlyRow.deniedRate, avgDeniedRate)}
+          onActivate={openDeniedFromKpi}
+          ariaLabel="Open denial breakdown"
+          tileRef={deniedRateRef}
         />
         <KpiTile
           kpiId="afterHoursRate"
-          value={`${afterHoursCount} / ${afterHoursDays}`}
-          sublabel={formatPercent(person.afterHoursRate, 1)}
-          accent={person.afterHoursRate > 18 ? "danger" : "primary"}
+          value={formatPercent(monthlyRow.afterHoursRate, 1)}
+          sublabel={formatPercent(monthlyRow.afterHoursRate, 1)}
+          accent={monthlyRow.afterHoursRate > 18 ? "danger" : "primary"}
+        />
+        <KpiTile
+          kpiId="weekendRate"
+          value={formatPercent(monthlyRow.weekendRate, 1)}
+          sublabel={formatPercent(monthlyRow.weekendRate, 1)}
+          accent={monthlyRow.weekendRate > 18 ? "warning" : "primary"}
         />
       </div>
 
@@ -181,7 +225,7 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
           />
           <div className="feed">
             {groupedEvents.length === 0 && (
-              <EmptyState title="No events" description="Try another filter." />
+              <EmptyState title="No events" description="No drilldown activity for this month." />
             )}
             {groupedEvents.map((group) => (
               <div key={group.date} className="feed__group">
@@ -196,8 +240,8 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
                       onClick={() => {
                         if (event.outcome === "denied") {
                           setHighlightedId(event.id);
-                          onHighlightEvent(event.id);
-                          onNavigate("denial");
+                          setOpenedFromKpi(false);
+                          onOpenDenialModal(monthlyRow.personId, monthKey, event.id);
                         }
                       }}
                     >
@@ -227,7 +271,8 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
         <div className="profile-side">
           <Panel title="Where Badged">
             <div className="list">
-              {person.scannerLocations.slice(0, 6).map((location) => (
+              {scannerLocations.length === 0 && <EmptyState title="No locations" />}
+              {scannerLocations.map((location) => (
                 <div key={location.locationId} className="list__row">
                   <span>{location.displayName}</span>
                   <span className="list__value">{location.count}</span>
@@ -240,11 +285,11 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
             <div className="outcomes">
               <div className="outcome">
                 <span className="outcome__label">Approved</span>
-                <span className="outcome__value">{formatNumber(person.approvedCount)}</span>
+                <span className="outcome__value">{formatNumber(monthlyRow.acceptedCount)}</span>
               </div>
               <div className="outcome outcome--danger">
                 <span className="outcome__label">Denied</span>
-                <span className="outcome__value">{formatNumber(person.deniedCount)}</span>
+                <span className="outcome__value">{formatNumber(monthlyRow.deniedCount)}</span>
               </div>
             </div>
             <div className="subsection-title">Recent Denied Events</div>
@@ -264,7 +309,7 @@ export const ProfileScreen = ({ personId, onNavigate, onHighlightEvent }: Profil
         </div>
       </div>
 
-      <StatusBanner status={person.statusLabel} reasons={person.statusReasons} />
+      <StatusBanner status={status.statusLabel} reasons={status.reasons} />
     </section>
   );
 };

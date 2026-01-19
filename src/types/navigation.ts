@@ -1,1 +1,1 @@
-export type View = "home" | "profile" | "denial";
+export type View = "home" | "profile";

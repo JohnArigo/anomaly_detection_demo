@@ -27,12 +27,18 @@ export const DenialBreakdownScreen = ({
   personId,
   highlightedEventId,
 }: DenialBreakdownScreenProps) => {
-  const person = useMemo(() => getPersonById(personId, peopleBase, badgeEvents), [personId]);
+  const person = useMemo(
+    () => getPersonById(personId, peopleBase, badgeEvents),
+    [personId]
+  );
 
   if (!person) {
     return (
       <section className="screen">
-        <EmptyState title="Select a person" description="Choose a person to view denial details." />
+        <EmptyState
+          title="Select a person"
+          description="Choose a person to view denial details."
+        />
       </section>
     );
   }
@@ -50,7 +56,7 @@ export const DenialBreakdownScreen = ({
         title={<h1 className="screen-title">Badge Denial Breakdown</h1>}
         meta={[
           `Last Badge: ${formatDate(person.lastBadgeTimestamp)} ${formatTime(
-            person.lastBadgeTimestamp,
+            person.lastBadgeTimestamp
           )}`,
           `Total Denied Attempts: ${formatNumber(totalDenied)}`,
         ]}
@@ -65,7 +71,10 @@ export const DenialBreakdownScreen = ({
 
         <Panel title="Denial Reasons">
           {person.denialReasons.length === 0 ? (
-            <EmptyState title="No denied events" description="No breakdown available." />
+            <EmptyState
+              title="No denied events"
+              description="No breakdown available."
+            />
           ) : (
             <div className="list">
               {person.denialReasons.map((reason) => (
@@ -75,8 +84,10 @@ export const DenialBreakdownScreen = ({
                     {formatNumber(reason.count)}
                     <span className="list__muted">
                       {formatPercent(
-                        totalDenied === 0 ? 0 : (reason.count / totalDenied) * 100,
-                        1,
+                        totalDenied === 0
+                          ? 0
+                          : (reason.count / totalDenied) * 100,
+                        1
                       )}
                     </span>
                   </span>
@@ -93,7 +104,9 @@ export const DenialBreakdownScreen = ({
               {person.topFlags.slice(0, 6).map((flag) => (
                 <div key={flag.flag} className="list__row">
                   <span className="list__label">{flag.flag}</span>
-                  <span className="list__value">{formatNumber(flag.count)}</span>
+                  <span className="list__value">
+                    {formatNumber(flag.count)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -106,10 +119,14 @@ export const DenialBreakdownScreen = ({
             {person.denialReasons.slice(0, 4).map((reason) => (
               <div key={`mirror-${reason.reason}`} className="list__row">
                 <span>{reason.reason}</span>
-                <span className="list__value">{formatNumber(reason.count)}</span>
+                <span className="list__value">
+                  {formatNumber(reason.count)}
+                </span>
               </div>
             ))}
-            {person.denialReasons.length === 0 && <EmptyState title="No denies" />}
+            {person.denialReasons.length === 0 && (
+              <EmptyState title="No denies" />
+            )}
           </div>
           <div className="subsection-title">Top Flags</div>
           <div className="list">
@@ -143,9 +160,15 @@ export const DenialBreakdownScreen = ({
                 .map((event) => (
                   <tr
                     key={event.id}
-                    className={highlightedEventId === event.id ? "row--active" : undefined}
+                    className={
+                      highlightedEventId === event.id
+                        ? "row--active"
+                        : undefined
+                    }
                   >
-                    <td>{`${formatDate(event.timestamp)} ${formatTime(event.timestamp)}`}</td>
+                    <td>{`${formatDate(event.timestamp)} ${formatTime(
+                      event.timestamp
+                    )}`}</td>
                     <td>{event.scannerName}</td>
                     <td>{event.denialReason ?? "Unknown"}</td>
                     <td>
@@ -157,7 +180,9 @@ export const DenialBreakdownScreen = ({
                           <BadgePill
                             key={`${event.id}-${flag}`}
                             label={flag}
-                            variant={flag === "After-Hours" ? "after-hours" : "flag"}
+                            variant={
+                              flag === "After-Hours" ? "after-hours" : "flag"
+                            }
                           />
                         ))}
                       </div>

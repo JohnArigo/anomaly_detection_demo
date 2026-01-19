@@ -3,17 +3,34 @@ import { AppShell } from "./components/layout/AppShell";
 import { TopBar } from "./components/layout/TopBar";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
-import { DenialBreakdownScreen } from "./screens/DenialBreakdownScreen";
-import { peopleBase } from "./data/mock";
+import { DenialBreakdownModal } from "./components/ui/DenialBreakdownModal";
+import { badgeEvents, baseNow, peopleBase } from "./data/mock";
+import { listMonthKeys, toMonthKey } from "./data/monthly";
 import type { View } from "./types/navigation";
 import type { PersonId } from "./data/types";
+
+const getNewestMonthKey = () => {
+  const keys = listMonthKeys(badgeEvents);
+  return keys[0] ?? toMonthKey(baseNow.toISOString());
+};
 
 export const App = () => {
   const [activeView, setActiveView] = useState<View>("home");
   const [activePersonId, setActivePersonId] = useState<PersonId | null>(
     peopleBase[0]?.id ?? null,
   );
-  const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
+  const [activeMonthKey, setActiveMonthKey] = useState<string>(() => getNewestMonthKey());
+  const [denialModal, setDenialModal] = useState<{
+    isOpen: boolean;
+    personId: PersonId | null;
+    monthKey: string | null;
+    highlightedEventId?: string | null;
+  }>({
+    isOpen: false,
+    personId: null,
+    monthKey: null,
+    highlightedEventId: null,
+  });
 
   const onSelectPerson = (personId: PersonId) => {
     setActivePersonId(personId);
@@ -23,8 +40,24 @@ export const App = () => {
     setActiveView(view);
   };
 
-  const onHighlightEvent = (eventId: string | null) => {
-    setHighlightedEventId(eventId);
+  const openDenialModal = (
+    personId: PersonId,
+    monthKey: string,
+    highlightedEventId?: string | null,
+  ) => {
+    setDenialModal({
+      isOpen: true,
+      personId,
+      monthKey,
+      highlightedEventId: highlightedEventId ?? null,
+    });
+  };
+
+  const closeDenialModal = () => {
+    setDenialModal((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
   };
 
   return (
@@ -40,19 +73,28 @@ export const App = () => {
       }
     >
       {activeView === "home" && (
-        <HomeScreen onSelectPerson={onSelectPerson} onNavigate={onNavigate} />
+        <HomeScreen
+          onSelectPerson={onSelectPerson}
+          onNavigate={onNavigate}
+          activeMonthKey={activeMonthKey}
+          onMonthChange={setActiveMonthKey}
+        />
       )}
       {activeView === "profile" && (
         <ProfileScreen
           personId={activePersonId}
-          onNavigate={onNavigate}
-          onHighlightEvent={onHighlightEvent}
+          monthKey={activeMonthKey}
+          denialModalOpen={denialModal.isOpen}
+          onOpenDenialModal={openDenialModal}
         />
       )}
-      {activeView === "denial" && (
-        <DenialBreakdownScreen
-          personId={activePersonId}
-          highlightedEventId={highlightedEventId}
+      {denialModal.isOpen && (
+        <DenialBreakdownModal
+          isOpen={denialModal.isOpen}
+          personId={denialModal.personId}
+          monthKey={denialModal.monthKey}
+          highlightedEventId={denialModal.highlightedEventId}
+          onClose={closeDenialModal}
         />
       )}
     </AppShell>
