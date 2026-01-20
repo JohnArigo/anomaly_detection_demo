@@ -44,6 +44,11 @@ const getSeverity = (score: number): Severity => {
   return "normal";
 };
 
+const toAriaSort = (active: boolean, dir: SortDirection) => {
+  if (!active) return "none";
+  return dir === "asc" ? "ascending" : "descending";
+};
+
 const severityLabel = (severity: Severity) => {
   if (severity === "delinquent") return "DELINQUENT";
   if (severity === "watch") return "WATCH";
@@ -75,7 +80,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--name"
           role="columnheader"
-          aria-sort={sortKey === "name" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "name", sortDir)}
         >
           <button
             type="button"
@@ -92,7 +97,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "anomalyScore" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "anomalyScore", sortDir)}
         >
           <button
             type="button"
@@ -107,7 +112,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "shannonEntropy" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "shannonEntropy", sortDir)}
         >
           <button
             type="button"
@@ -122,7 +127,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "deniedRate" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "deniedRate", sortDir)}
         >
           <button
             type="button"
@@ -137,7 +142,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "afterHoursRate" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "afterHoursRate", sortDir)}
         >
           <button
             type="button"
@@ -153,7 +158,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "weekendRate" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "weekendRate", sortDir)}
         >
           <button
             type="button"
@@ -168,7 +173,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "uniqueDeviceCount" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "uniqueDeviceCount", sortDir)}
         >
           <button
             type="button"
@@ -183,7 +188,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "rapidBadgingCount" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "rapidBadgingCount", sortDir)}
         >
           <button
             type="button"
@@ -198,7 +203,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--num"
           role="columnheader"
-          aria-sort={sortKey === "daysActive" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "daysActive", sortDir)}
         >
           <button
             type="button"
@@ -214,7 +219,7 @@ export const RosterTable = ({
         <div
           className="roster-cell roster-cell--date"
           role="columnheader"
-          aria-sort={sortKey === "lastEventTimestamp" ? sortDir : "none"}
+          aria-sort={toAriaSort(sortKey === "lastEventTimestamp", sortDir)}
         >
           <button
             type="button"

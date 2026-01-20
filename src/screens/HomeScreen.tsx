@@ -81,6 +81,27 @@ const rangeLabel = (label: string, range: RangeFilter) => {
 
 const sortRows = (rows: MonthlyPersonSummary[], key: SortKey, dir: SortDirection) => {
   const next = [...rows];
+  const getNumericValue = (row: MonthlyPersonSummary, key: SortKey) => {
+    switch (key) {
+      case "anomalyScore":
+        return row.anomalyScore;
+      case "shannonEntropy":
+        return row.shannonEntropy;
+      case "deniedRate":
+        return row.deniedRate;
+      case "afterHoursRate":
+        return row.afterHoursRate;
+      case "weekendRate":
+        return row.weekendRate;
+      case "uniqueDeviceCount":
+        return row.uniqueDeviceCount;
+      case "rapidBadgingCount":
+        return row.rapidBadgingCount;
+      default:
+        return row.badgedDays.length;
+    }
+  };
+
   next.sort((a, b) => {
     const order = dir === "asc" ? 1 : -1;
     if (key === "name") return order * a.name.localeCompare(b.name);
@@ -89,8 +110,7 @@ const sortRows = (rows: MonthlyPersonSummary[], key: SortKey, dir: SortDirection
       const bt = new Date(b.lastEventTimestamp).getTime();
       return order * (at - bt);
     }
-    if (key === "daysActive") return order * (a.badgedDays.length - b.badgedDays.length);
-    return order * ((a as Record<string, number>)[key] - (b as Record<string, number>)[key]);
+    return order * (getNumericValue(a, key) - getNumericValue(b, key));
   });
   return next;
 };

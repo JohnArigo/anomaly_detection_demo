@@ -1,7 +1,6 @@
 import type { PersonOption } from "../ui/PersonSelect";
 import type { View } from "../../types/navigation";
 import { PersonCombobox } from "../PersonCombobox";
-import { GlobalSearch } from "../GlobalSearch";
 
 type TopBarProps = {
   activeView: View;
