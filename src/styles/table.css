@@ -4,7 +4,7 @@
 }
 
 .roster-table {
-  max-height: 440px;
+  max-height: min(440px, calc(100vh - 360px));
   overflow: auto;
   border: none;
   border-radius: 0;
@@ -24,6 +24,24 @@ table.person-table td {
   text-align: left;
   border-bottom: 1px solid var(--border-subtle);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  table.person-table {
+    font-size: var(--text-xs);
+  }
+
+  .roster-table {
+    max-height: min(380px, calc(100vh - 320px));
+  }
+}
+
+@media (max-width: 600px) {
+  .roster-table {
+    max-height: min(320px, calc(100vh - 280px));
+  }
 }
 
 table.person-table thead th {
@@ -36,6 +54,7 @@ table.person-table thead th {
   color: var(--text-secondary);
   background: var(--surface-2);
   border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
 }
 
 table.person-table tbody tr:nth-child(even) {
@@ -115,17 +134,35 @@ table.person-table tbody tr:nth-child(even) {
   text-align: right;
 }
 
+.col--name {
+  padding-left: calc(var(--avatar-size, 28px) + var(--cell-gap, var(--space-2)));
+}
+
+.th-num .th-button,
+.th-date .th-button,
+.th-action .th-button {
+  justify-content: flex-end;
+}
+
 .th-button {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: 6px;
   padding: 0 14px 0 0;
   background: transparent;
   border: none;
   font: inherit;
   color: inherit;
   cursor: pointer;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.th-label {
+  display: block;
+  white-space: nowrap;
+  line-height: 1.15;
 }
 
 .th-button--sorted::after {
@@ -172,12 +209,12 @@ table.person-table tbody tr:nth-child(even) {
 .person-cell {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--cell-gap, var(--space-2));
 }
 
 .avatar {
-  width: 28px;
-  height: 28px;
+  width: var(--avatar-size, 28px);
+  height: var(--avatar-size, 28px);
   border-radius: 50%;
   background: var(--surface-3);
   color: var(--accent-primary);
@@ -244,4 +281,61 @@ table.person-table tbody tr:nth-child(even) {
 .last-badge__time {
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+@media (max-width: 700px) {
+  table.person-table thead {
+    display: none;
+  }
+
+  table.person-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--panel-bg);
+  }
+
+  .person-table tbody tr::before {
+    top: 10px;
+    bottom: 10px;
+  }
+
+  table.person-table td {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0;
+    border-bottom: none;
+    white-space: normal;
+  }
+
+  table.person-table td::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+  }
+
+  .cell--name,
+  .cell--date,
+  .cell--action {
+    grid-column: 1 / -1;
+  }
+
+  .cell--num {
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  .cell--action {
+    align-items: flex-end;
+  }
+
+  .cell--action::before {
+    display: none;
+  }
 }

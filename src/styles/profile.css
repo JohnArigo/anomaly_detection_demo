@@ -302,3 +302,38 @@
   border-color: var(--status-danger);
   background: var(--status-danger-bg);
 }
+
+@media (max-width: 1200px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .screen-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feed__row {
+    grid-template-columns: 70px minmax(0, 1fr);
+  }
+
+  .feed__pills {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feed {
+    max-height: none;
+  }
+}

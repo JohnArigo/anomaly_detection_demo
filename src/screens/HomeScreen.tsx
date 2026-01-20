@@ -3,22 +3,16 @@ import { formatNumber, formatPercent, formatScore } from "../utils/format";
 import { formatDate, formatTime } from "../utils/date";
 import { Panel } from "../components/ui/Panel";
 import { FilterChip } from "../components/ui/FilterChip";
-import { EmptyState } from "../components/ui/EmptyState";
 import type { View } from "../types/navigation";
 import { badgeEvents, peopleBase } from "../data/mock";
 import type { DenialReason, MonthlyPersonSummary } from "../data/types";
 import { buildMonthlySummaries, denialReasonOptions, listMonthKeys } from "../data/monthly";
+import { RosterTable, type SortDirection, type SortKey } from "../components/roster/RosterTable";
 
 const anomalyTone = (value: number) => {
   if (value >= 75) return "danger";
   if (value >= 60) return "warning";
   return "neutral";
-};
-
-const severityTone = (value: number) => {
-  if (value >= 90) return "delinquent";
-  if (value >= 70) return "watch";
-  return "normal";
 };
 
 type RangeFilter = { min: string; max: string };
@@ -85,20 +79,6 @@ const rangeLabel = (label: string, range: RangeFilter) => {
   return `${label}: ${min}-${max}`;
 };
 
-type SortKey =
-  | "name"
-  | "anomalyScore"
-  | "shannonEntropy"
-  | "deniedRate"
-  | "afterHoursRate"
-  | "weekendRate"
-  | "uniqueDeviceCount"
-  | "rapidBadgingCount"
-  | "daysActive"
-  | "lastEventTimestamp";
-
-type SortDirection = "asc" | "desc";
-
 const sortRows = (rows: MonthlyPersonSummary[], key: SortKey, dir: SortDirection) => {
   const next = [...rows];
   next.sort((a, b) => {
@@ -122,6 +102,7 @@ export const HomeScreen = ({
   onMonthChange,
 }: HomeScreenProps) => {
   const [filters, setFilters] = useState<HomeFilters>(() => defaultFilters());
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("anomalyScore");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -189,7 +170,7 @@ export const HomeScreen = ({
     window.setTimeout(() => setHighlightedId(null), 700);
   };
 
-  const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>, personId: string) => {
+  const onRowKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, personId: string) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       activatePerson(personId);
@@ -219,10 +200,23 @@ export const HomeScreen = ({
   };
 
   return (
-    <section className="home">
+    <section className={`home ${filtersOpen ? "home--filters-open" : ""}`.trim()}>
       <div className="home-layout">
-        <aside className="sidebar">
-          <Panel title="Filters" className="filters-panel">
+        <aside className="sidebar" id="filters-panel">
+          <Panel
+            title="Filters"
+            className="filters-panel"
+            headerRight={
+              <button
+                type="button"
+                className="btn btn--ghost btn--small filters-close"
+                onClick={() => setFiltersOpen(false)}
+                aria-label="Close filters"
+              >
+                Close
+              </button>
+            }
+          >
             <div className="filter-section">
               <div className="filter-title">Name</div>
               <label className="input">
@@ -639,6 +633,16 @@ export const HomeScreen = ({
               </div>
             </div>
             <div className="home-header__controls">
+              <button
+                type="button"
+                className="btn btn--ghost filters-toggle"
+                onClick={() => setFiltersOpen(true)}
+                aria-label="Open filters"
+                aria-expanded={filtersOpen}
+                aria-controls="filters-panel"
+              >
+                Filters
+              </button>
               <label className="select">
                 <select
                   value={activeMonthKey}
@@ -776,250 +780,33 @@ export const HomeScreen = ({
             </span>
           </div>
 
-          <Panel title="Personnel">
-            <div className="table roster-table">
-              {pageRows.length === 0 ? (
-                <EmptyState title="No results" description="Try adjusting filters." />
-              ) : (
-                <table className="person-table">
-                  <colgroup>
-                    <col style={{ width: "22%" }} />
-                    <col style={{ width: "9%" }} />
-                    <col style={{ width: "9%" }} />
-                    <col style={{ width: "9%" }} />
-                    <col style={{ width: "9%" }} />
-                    <col style={{ width: "8%" }} />
-                    <col style={{ width: "7%" }} />
-                    <col style={{ width: "7%" }} />
-                    <col style={{ width: "7%" }} />
-                    <col style={{ width: "11%" }} />
-                    <col style={{ width: "6%" }} />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th
-                        className="th-name"
-                        aria-sort={sortKey === "name" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "name" ? `th-button--sorted ${sortDir}` : ""
-                          }`.trim()}
-                          onClick={() => onSort("name")}
-                        >
-                          Name
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "anomalyScore" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "anomalyScore"
-                              ? `th-button--sorted ${sortDir}`
-                              : ""
-                          }`.trim()}
-                          onClick={() => onSort("anomalyScore")}
-                        >
-                          Anomaly
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "shannonEntropy" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "shannonEntropy"
-                              ? `th-button--sorted ${sortDir}`
-                              : ""
-                          }`.trim()}
-                          onClick={() => onSort("shannonEntropy")}
-                        >
-                          Entropy
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "deniedRate" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "deniedRate" ? `th-button--sorted ${sortDir}` : ""
-                          }`.trim()}
-                          onClick={() => onSort("deniedRate")}
-                        >
-                          Denied Rate
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "afterHoursRate" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "afterHoursRate"
-                              ? `th-button--sorted ${sortDir}`
-                              : ""
-                          }`.trim()}
-                          onClick={() => onSort("afterHoursRate")}
-                        >
-                          After-Hours
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "weekendRate" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "weekendRate" ? `th-button--sorted ${sortDir}` : ""
-                          }`.trim()}
-                          onClick={() => onSort("weekendRate")}
-                        >
-                          Weekend
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "uniqueDeviceCount" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "uniqueDeviceCount"
-                              ? `th-button--sorted ${sortDir}`
-                              : ""
-                          }`.trim()}
-                          onClick={() => onSort("uniqueDeviceCount")}
-                        >
-                          Devices
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "rapidBadgingCount" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "rapidBadgingCount"
-                              ? `th-button--sorted ${sortDir}`
-                              : ""
-                          }`.trim()}
-                          onClick={() => onSort("rapidBadgingCount")}
-                        >
-                          Rapid
-                        </button>
-                      </th>
-                      <th
-                        className="th-num"
-                        aria-sort={sortKey === "daysActive" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "daysActive" ? `th-button--sorted ${sortDir}` : ""
-                          }`.trim()}
-                          onClick={() => onSort("daysActive")}
-                        >
-                          Days Active
-                        </button>
-                      </th>
-                      <th
-                        className="th-date"
-                        aria-sort={sortKey === "lastEventTimestamp" ? sortDir : "none"}
-                      >
-                        <button
-                          type="button"
-                          className={`th-button ${
-                            sortKey === "lastEventTimestamp"
-                              ? `th-button--sorted ${sortDir}`
-                              : ""
-                          }`.trim()}
-                          onClick={() => onSort("lastEventTimestamp")}
-                        >
-                          Last Event
-                        </button>
-                      </th>
-                      <th className="th-action"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.map((person) => (
-                      <tr
-                        key={`${person.monthKey}-${person.personId}`}
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`Open ${person.name}`}
-                        data-severity={severityTone(person.anomalyScore)}
-                        className={highlightedId === person.personId ? "row--active" : undefined}
-                        onClick={() => activatePerson(person.personId)}
-                        onKeyDown={(event) => onRowKeyDown(event, person.personId)}
-                      >
-                        <td className="cell cell--name">
-                          <div className="person-cell">
-                            <div className="avatar">{person.name.charAt(0)}</div>
-                            <div>
-                              <div className="person-name">{person.name}</div>
-                              <div className="person-sub">{person.monthKey}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="cell cell--num">
-                          <span
-                            className={`anomaly-chip anomaly-chip--${anomalyTone(
-                              person.anomalyScore,
-                            )}`}
-                          >
-                            {person.anomalyScore}
-                          </span>
-                        </td>
-                        <td className="cell cell--num">{formatScore(person.shannonEntropy, 2)}</td>
-                        <td className="cell cell--num">{formatPercent(person.deniedRate, 1)}</td>
-                        <td className="cell cell--num">
-                          {formatPercent(person.afterHoursRate, 1)}
-                        </td>
-                        <td className="cell cell--num">{formatPercent(person.weekendRate, 1)}</td>
-                        <td className="cell cell--num">{formatNumber(person.uniqueDeviceCount)}</td>
-                        <td className="cell cell--num">{formatNumber(person.rapidBadgingCount)}</td>
-                        <td className="cell cell--num">{formatNumber(person.badgedDays.length)}</td>
-                        <td className="cell cell--date">
-                          <div className="last-badge">
-                            <span>{formatDate(person.lastEventTimestamp)}</span>
-                            <span className="last-badge__time">
-                              {formatTime(person.lastEventTimestamp)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="cell cell--action">
-                          <button
-                            type="button"
-                            className="btn btn--ghost btn--small"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              activatePerson(person.personId);
-                            }}
-                          >
-                            Open
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+          <Panel title="Personnel" className="panel--ghost">
+            <RosterTable
+              rows={pageRows}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={onSort}
+              highlightedId={highlightedId}
+              onActivatePerson={activatePerson}
+              onRowKeyDown={onRowKeyDown}
+              anomalyTone={anomalyTone}
+              formatters={{
+                formatNumber,
+                formatPercent,
+                formatScore,
+                formatDate,
+                formatTime,
+              }}
+            />
           </Panel>
         </div>
       </div>
+      <button
+        type="button"
+        className="filters-backdrop"
+        aria-label="Close filters"
+        onClick={() => setFiltersOpen(false)}
+      />
     </section>
   );
 };

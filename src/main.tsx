@@ -9,6 +9,7 @@ import "./styles/forms.css";
 import "./styles/panels.css";
 import "./styles/chips.css";
 import "./styles/table.css";
+import "./components/roster/rosterTable.css";
 import "./styles/home.css";
 import "./styles/profile.css";
 import "./styles/modal.css";

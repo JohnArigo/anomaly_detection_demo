@@ -22,6 +22,17 @@
   color: var(--text-muted);
 }
 
+.panel--ghost {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.panel--ghost .panel__header {
+  padding: 0 0 var(--space-2);
+}
+
 .list {
   display: flex;
   flex-direction: column;

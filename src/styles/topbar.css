@@ -113,3 +113,53 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+@media (max-width: 900px) {
+  .topbar {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .topbar__left {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .topbar__crumbs {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .topbar__nav {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .topbar__actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding: var(--space-3);
+  }
+
+  .topbar__actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .select select {
+    width: 100%;
+  }
+
+  .combobox {
+    width: 100%;
+    min-width: 0;
+  }
+}
