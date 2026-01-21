@@ -85,8 +85,8 @@ export const filterPeople = (people: PersonBase[], filters: FilterState) => {
 };
 
 export const normalizeAnomalyRange = (range: { min: number; max: number }) => {
-  const min = Math.min(Math.max(range.min, 0), 100);
-  const max = Math.min(Math.max(range.max, 0), 100);
+  const min = Math.min(Math.max(range.min, -1), 1);
+  const max = Math.min(Math.max(range.max, -1), 1);
   if (min <= max) return { min, max };
   return { min: max, max: min };
 };

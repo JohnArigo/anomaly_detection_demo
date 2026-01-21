@@ -110,5 +110,5 @@ export const isolationForestScore = (params: {
 };
 
 export const anomalyScoreFromIso = (isoScore: number) => {
-  return Math.round(clamp((isoScore / 10) * 100, 0, 100));
+  return clamp((isoScore - 5) / 5, -1, 1);
 };

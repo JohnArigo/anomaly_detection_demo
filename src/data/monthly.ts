@@ -123,6 +123,7 @@ export const buildMonthlySummaries = (
       monthKey,
       lastEventTimestamp: sorted[0]?.timestamp ?? fallbackTimestamp(monthKey),
       anomalyScore: anomalyScoreFromIso(isoScore),
+      isAnomaly: person.isAnomaly,
       shannonEntropy: entropy,
       deniedRate,
       weekendRate,

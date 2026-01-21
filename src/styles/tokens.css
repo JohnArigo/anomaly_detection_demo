@@ -52,6 +52,13 @@
   --t-fast: 120ms;
   --t-med: 160ms;
 
+  --scrollbar-size: 10px;
+  --scrollbar-track: var(--surface-1);
+  --scrollbar-thumb: var(--surface-3);
+  --scrollbar-thumb-hover: var(--border-3);
+  --scrollbar-radius: 999px;
+  --scrollbar-border: 3px solid transparent;
+
   --app-bg: var(--bg-0);
   --page-bg: var(--surface-1);
   --panel-bg: var(--surface-2);

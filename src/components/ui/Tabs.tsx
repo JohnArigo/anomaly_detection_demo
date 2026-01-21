@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import "../../styles/tabs.css";
 
 type Tab = {
   id: string;

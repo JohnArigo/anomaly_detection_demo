@@ -1,5 +1,11 @@
-import { useMemo, useState } from "react";
-import { formatNumber, formatPercent, formatScore } from "../utils/format";
+import { useMemo, useRef, useState } from "react";
+import {
+  formatAnomalyScore,
+  formatAnomalyScoreFull,
+  formatNumber,
+  formatPercent,
+  formatScore,
+} from "../utils/format";
 import { formatDate, formatTime } from "../utils/date";
 import { Panel } from "../components/ui/Panel";
 import { FilterChip } from "../components/ui/FilterChip";
@@ -8,12 +14,8 @@ import { badgeEvents, peopleBase } from "../data/mock";
 import type { DenialReason, MonthlyPersonSummary } from "../data/types";
 import { buildMonthlySummaries, denialReasonOptions, listMonthKeys } from "../data/monthly";
 import { RosterTable, type SortDirection, type SortKey } from "../components/roster/RosterTable";
-
-const anomalyTone = (value: number) => {
-  if (value >= 75) return "danger";
-  if (value >= 60) return "warning";
-  return "neutral";
-};
+import { FilterDrawer } from "../components/filters/FilterDrawer";
+import { PersonCombobox } from "../components/PersonCombobox";
 
 type RangeFilter = { min: string; max: string };
 
@@ -126,12 +128,21 @@ export const HomeScreen = ({
   const [sortKey, setSortKey] = useState<SortKey>("anomalyScore");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const monthOptions = useMemo(() => listMonthKeys(badgeEvents), []);
 
   const monthlyRows = useMemo(
     () => buildMonthlySummaries(peopleBase, badgeEvents, activeMonthKey),
     [activeMonthKey],
+  );
+  const rosterOptions = useMemo(
+    () =>
+      monthlyRows.map((person) => ({
+        value: person.personId,
+        label: person.name,
+      })),
+    [monthlyRows],
   );
 
   const filteredRows = useMemo(() => {
@@ -170,18 +181,22 @@ export const HomeScreen = ({
   const pageSize = 100;
   const pageRows = useMemo(() => sortedRows.slice(0, pageSize), [sortedRows]);
 
-  const summary = useMemo(() => {
-    const totalEvents = filteredRows.reduce((sum, row) => sum + row.totalEvents, 0);
-    const avgAnomaly =
-      filteredRows.length === 0
-        ? 0
-        : filteredRows.reduce((sum, row) => sum + row.anomalyScore, 0) / filteredRows.length;
-    return {
-      totalPersonnel: filteredRows.length,
-      totalEvents,
-      avgAnomaly,
-    };
-  }, [filteredRows]);
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.nameQuery.trim()) count += 1;
+    if (filters.deviceQuery.trim()) count += 1;
+    if (hasRange(filters.anomalyRange)) count += 1;
+    if (hasRange(filters.deniedRateRange)) count += 1;
+    if (hasRange(filters.afterHoursRateRange)) count += 1;
+    if (hasRange(filters.weekendRateRange)) count += 1;
+    if (hasRange(filters.shannonEntropyRange)) count += 1;
+    if (hasRange(filters.uniqueDeviceCountRange)) count += 1;
+    if (hasRange(filters.uniqueDeviceStdDevRange)) count += 1;
+    if (hasRange(filters.rapidBadgingCountRange)) count += 1;
+    if (hasRange(filters.daysActiveRange)) count += 1;
+    if (filters.denialReasons.length > 0) count += 1;
+    return count;
+  }, [filters]);
 
   const activatePerson = (personId: string) => {
     onSelectPerson(personId);
@@ -220,482 +235,26 @@ export const HomeScreen = ({
   };
 
   return (
-    <section className={`home ${filtersOpen ? "home--filters-open" : ""}`.trim()}>
+    <section className="home">
       <div className="home-layout">
-        <aside className="sidebar" id="filters-panel">
-          <Panel
-            title="Filters"
-            className="filters-panel"
-            headerRight={
-              <button
-                type="button"
-                className="btn btn--ghost btn--small filters-close"
-                onClick={() => setFiltersOpen(false)}
-                aria-label="Close filters"
-              >
-                Close
-              </button>
-            }
-          >
-            <div className="filter-section">
-              <div className="filter-title">Name</div>
-              <label className="input">
-                <input
-                  type="text"
-                  placeholder="Search personnel"
-                  value={filters.nameQuery}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, nameQuery: event.target.value }))}
-                />
-              </label>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Device Search</div>
-              <label className="input">
-                <input
-                  type="text"
-                  placeholder="Search device IDs"
-                  value={filters.deviceQuery}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, deviceQuery: event.target.value }))
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Anomaly Score</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Min"
-                    value={filters.anomalyRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        anomalyRange: { ...prev.anomalyRange, min: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Max"
-                    value={filters.anomalyRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        anomalyRange: { ...prev.anomalyRange, max: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Denied Rate</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Min"
-                    value={filters.deniedRateRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        deniedRateRange: { ...prev.deniedRateRange, min: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Max"
-                    value={filters.deniedRateRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        deniedRateRange: { ...prev.deniedRateRange, max: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">After-Hours Rate</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Min"
-                    value={filters.afterHoursRateRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        afterHoursRateRange: {
-                          ...prev.afterHoursRateRange,
-                          min: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Max"
-                    value={filters.afterHoursRateRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        afterHoursRateRange: {
-                          ...prev.afterHoursRateRange,
-                          max: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Weekend Rate</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Min"
-                    value={filters.weekendRateRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        weekendRateRange: { ...prev.weekendRateRange, min: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Max"
-                    value={filters.weekendRateRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        weekendRateRange: { ...prev.weekendRateRange, max: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Shannon Entropy</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    placeholder="Min"
-                    value={filters.shannonEntropyRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        shannonEntropyRange: {
-                          ...prev.shannonEntropyRange,
-                          min: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    placeholder="Max"
-                    value={filters.shannonEntropyRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        shannonEntropyRange: {
-                          ...prev.shannonEntropyRange,
-                          max: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Unique Device Count</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Min"
-                    value={filters.uniqueDeviceCountRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        uniqueDeviceCountRange: {
-                          ...prev.uniqueDeviceCountRange,
-                          min: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Max"
-                    value={filters.uniqueDeviceCountRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        uniqueDeviceCountRange: {
-                          ...prev.uniqueDeviceCountRange,
-                          max: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Unique Device Std Dev</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    placeholder="Min"
-                    value={filters.uniqueDeviceStdDevRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        uniqueDeviceStdDevRange: {
-                          ...prev.uniqueDeviceStdDevRange,
-                          min: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    placeholder="Max"
-                    value={filters.uniqueDeviceStdDevRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        uniqueDeviceStdDevRange: {
-                          ...prev.uniqueDeviceStdDevRange,
-                          max: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Rapid Badging Count</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Min"
-                    value={filters.rapidBadgingCountRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        rapidBadgingCountRange: {
-                          ...prev.rapidBadgingCountRange,
-                          min: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Max"
-                    value={filters.rapidBadgingCountRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        rapidBadgingCountRange: {
-                          ...prev.rapidBadgingCountRange,
-                          max: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Days Active</div>
-              <div className="range-row">
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Min"
-                    value={filters.daysActiveRange.min}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        daysActiveRange: { ...prev.daysActiveRange, min: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-                <span className="arrow">to</span>
-                <label className="input">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Max"
-                    value={filters.daysActiveRange.max}
-                    onChange={(event) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        daysActiveRange: { ...prev.daysActiveRange, max: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <div className="filter-title">Denial Reasons</div>
-              <div className="checkbox-list">
-                {denialReasonOptions.map((reason) => (
-                  <label key={reason} className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={filters.denialReasons.includes(reason)}
-                      onChange={() => toggleReason(reason)}
-                    />
-                    <span>{reason}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-actions">
-              <button type="button" className="btn btn--ghost" onClick={clearFilters}>
-                Clear All
-              </button>
-            </div>
-          </Panel>
-        </aside>
-
         <div className="home-main">
-          <div className="home-header">
-            <div>
-              <div className="home-header__title">Monthly Personnel Roster</div>
-              <div className="home-header__subtitle">
-                Active month: {activeMonthKey}
-              </div>
-            </div>
-            <div className="home-header__controls">
-              <button
-                type="button"
-                className="btn btn--ghost filters-toggle"
-                onClick={() => setFiltersOpen(true)}
-                aria-label="Open filters"
-                aria-expanded={filtersOpen}
-                aria-controls="filters-panel"
-              >
-                Filters
-              </button>
-              <label className="select">
-                <select
-                  value={activeMonthKey}
-                  onChange={(event) => onMonthChange(event.target.value)}
-                  aria-label="Select month"
-                >
-                  {monthOptions.map((monthKey) => (
-                    <option key={monthKey} value={monthKey}>
-                      {monthKey}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <div className="kpi-row">
-            <div className="kpi-mini">
-              <div className="kpi-mini__label">Total Personnel</div>
-              <div className="kpi-mini__value">{formatNumber(summary.totalPersonnel)}</div>
-            </div>
-            <div className="kpi-mini">
-              <div className="kpi-mini__label">Total Events</div>
-              <div className="kpi-mini__value">{formatNumber(summary.totalEvents)}</div>
-            </div>
-            <div className="kpi-mini">
-              <div className="kpi-mini__label">Avg Anomaly</div>
-              <div className="kpi-mini__value">{formatScore(summary.avgAnomaly, 1)}</div>
-            </div>
-            <div className="kpi-mini">
-              <div className="kpi-mini__label">Month</div>
-              <div className="kpi-mini__value">{activeMonthKey}</div>
-            </div>
+          <div className="home-toolbar">
+            <button
+              ref={filterButtonRef}
+              type="button"
+              className={`btn btn--ghost filters-button ${
+                activeFilterCount > 0 ? "filters-button--active" : ""
+              }`.trim()}
+              onClick={() => setFiltersOpen(true)}
+              aria-label="Open filters"
+              aria-expanded={filtersOpen}
+            >
+              <span className="filters-button__icon" aria-hidden="true" />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="filters-button__count">({activeFilterCount})</span>
+              )}
+            </button>
           </div>
 
           <div className="chip-row">
@@ -795,9 +354,6 @@ export const HomeScreen = ({
                 }
               />
             ))}
-            <span className="chip-row__meta">
-              Showing {pageRows.length} of {monthlyRows.length}
-            </span>
           </div>
 
           <Panel title="Personnel" className="panel--ghost">
@@ -809,11 +365,12 @@ export const HomeScreen = ({
               highlightedId={highlightedId}
               onActivatePerson={activatePerson}
               onRowKeyDown={onRowKeyDown}
-              anomalyTone={anomalyTone}
               formatters={{
                 formatNumber,
                 formatPercent,
                 formatScore,
+                formatAnomalyScore,
+                formatAnomalyScoreFull,
                 formatDate,
                 formatTime,
               }}
@@ -821,12 +378,452 @@ export const HomeScreen = ({
           </Panel>
         </div>
       </div>
-      <button
-        type="button"
-        className="filters-backdrop"
-        aria-label="Close filters"
-        onClick={() => setFiltersOpen(false)}
-      />
+      <FilterDrawer
+        isOpen={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        restoreFocusRef={filterButtonRef}
+      >
+        <div className="filters-panel">
+          <div className="filter-section">
+            <div className="filter-title">Month</div>
+            <label className="select">
+              <select
+                value={activeMonthKey}
+                onChange={(event) => onMonthChange(event.target.value)}
+                aria-label="Select month"
+              >
+                {monthOptions.map((monthKey) => (
+                  <option key={monthKey} value={monthKey}>
+                    {monthKey}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Personnel Search</div>
+            <PersonCombobox
+              options={rosterOptions}
+              selectedValue={null}
+              selectedLabel={null}
+              onSelect={(personId) => {
+                onSelectPerson(personId);
+                onNavigate("profile");
+                setFiltersOpen(false);
+              }}
+              isProfile={false}
+            />
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Name</div>
+            <label className="input">
+              <input
+                type="text"
+                placeholder="Search personnel"
+                value={filters.nameQuery}
+                onChange={(event) => setFilters((prev) => ({ ...prev, nameQuery: event.target.value }))}
+              />
+            </label>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Device Search</div>
+            <label className="input">
+              <input
+                type="text"
+                placeholder="Search device IDs"
+                value={filters.deviceQuery}
+                onChange={(event) =>
+                  setFilters((prev) => ({ ...prev, deviceQuery: event.target.value }))
+                }
+              />
+            </label>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Anomaly Score</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={-1}
+                  max={1}
+                  step="0.01"
+                  placeholder="Min"
+                  value={filters.anomalyRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      anomalyRange: { ...prev.anomalyRange, min: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={-1}
+                  max={1}
+                  step="0.01"
+                  placeholder="Max"
+                  value={filters.anomalyRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      anomalyRange: { ...prev.anomalyRange, max: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Denied Rate</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="Min"
+                  value={filters.deniedRateRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      deniedRateRange: { ...prev.deniedRateRange, min: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="Max"
+                  value={filters.deniedRateRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      deniedRateRange: { ...prev.deniedRateRange, max: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">After-Hours Rate</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="Min"
+                  value={filters.afterHoursRateRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      afterHoursRateRange: {
+                        ...prev.afterHoursRateRange,
+                        min: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="Max"
+                  value={filters.afterHoursRateRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      afterHoursRateRange: {
+                        ...prev.afterHoursRateRange,
+                        max: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Weekend Rate</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="Min"
+                  value={filters.weekendRateRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      weekendRateRange: { ...prev.weekendRateRange, min: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="Max"
+                  value={filters.weekendRateRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      weekendRateRange: { ...prev.weekendRateRange, max: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Shannon Entropy</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  placeholder="Min"
+                  value={filters.shannonEntropyRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      shannonEntropyRange: {
+                        ...prev.shannonEntropyRange,
+                        min: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  placeholder="Max"
+                  value={filters.shannonEntropyRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      shannonEntropyRange: {
+                        ...prev.shannonEntropyRange,
+                        max: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Unique Device Count</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Min"
+                  value={filters.uniqueDeviceCountRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      uniqueDeviceCountRange: {
+                        ...prev.uniqueDeviceCountRange,
+                        min: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Max"
+                  value={filters.uniqueDeviceCountRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      uniqueDeviceCountRange: {
+                        ...prev.uniqueDeviceCountRange,
+                        max: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Unique Device Std Dev</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  placeholder="Min"
+                  value={filters.uniqueDeviceStdDevRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      uniqueDeviceStdDevRange: {
+                        ...prev.uniqueDeviceStdDevRange,
+                        min: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  placeholder="Max"
+                  value={filters.uniqueDeviceStdDevRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      uniqueDeviceStdDevRange: {
+                        ...prev.uniqueDeviceStdDevRange,
+                        max: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Rapid Badging Count</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Min"
+                  value={filters.rapidBadgingCountRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      rapidBadgingCountRange: {
+                        ...prev.rapidBadgingCountRange,
+                        min: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Max"
+                  value={filters.rapidBadgingCountRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      rapidBadgingCountRange: {
+                        ...prev.rapidBadgingCountRange,
+                        max: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Days Active</div>
+            <div className="range-row">
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Min"
+                  value={filters.daysActiveRange.min}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      daysActiveRange: { ...prev.daysActiveRange, min: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+              <span className="arrow">to</span>
+              <label className="input">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Max"
+                  value={filters.daysActiveRange.max}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      daysActiveRange: { ...prev.daysActiveRange, max: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="filter-section">
+            <div className="filter-title">Denial Reasons</div>
+            <div className="checkbox-list">
+              {denialReasonOptions.map((reason) => (
+                <label key={reason} className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={filters.denialReasons.includes(reason)}
+                    onChange={() => toggleReason(reason)}
+                  />
+                  <span>{reason}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="filter-actions">
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+              Clear All
+            </button>
+          </div>
+        </div>
+      </FilterDrawer>
     </section>
   );
 };

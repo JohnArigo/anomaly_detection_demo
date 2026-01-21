@@ -79,7 +79,6 @@ export const App = () => {
           monthKey={activeMonthKey}
           monthOptions={listMonthKeys(badgeEvents)}
           onMonthChange={setActiveMonthKey}
-          onBack={() => setActiveView("home")}
         />
       }
     >

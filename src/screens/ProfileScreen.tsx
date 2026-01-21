@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BadgeEvent } from "../data/types";
 import { formatDate, formatTime } from "../utils/date";
-import { formatNumber, formatPercent, formatScore } from "../utils/format";
+import { formatAnomalyScore, formatNumber, formatPercent, formatScore } from "../utils/format";
 import { BadgePill } from "../components/ui/BadgePill";
 import { KpiTile } from "../components/ui/KpiTile";
 import { Panel } from "../components/ui/Panel";
@@ -12,6 +12,13 @@ import { ScreenHeader } from "../components/layout/ScreenHeader";
 import { badgeEvents, peopleBase } from "../data/mock";
 import { buildMonthlySummaries, getMonthlyRow, toMonthKey } from "../data/monthly";
 import { percentileRank } from "../utils/math";
+import {
+  getSeverityFromModel,
+  severityLabel,
+  severityToKpiAccent,
+  SEVERITY_THRESHOLDS,
+  type Severity,
+} from "../utils/severity";
 import { locationStats } from "../data/metrics";
 
 type ProfileScreenProps = {
@@ -36,6 +43,7 @@ const percentDiffLabel = (value: number, avg: number) => {
 
 const deriveStatus = (params: {
   anomalyScore: number;
+  isAnomaly: number;
   deniedRate: number;
   afterHoursRate: number;
   rapidBadgingCount: number;
@@ -44,12 +52,15 @@ const deriveStatus = (params: {
   if (params.deniedRate > 14) reasons.push("High denied rate");
   if (params.afterHoursRate > 18) reasons.push("After-hours surge");
   if (params.rapidBadgingCount > 6) reasons.push("Rapid repeat attempts");
-  if (params.anomalyScore > 70) reasons.push("Anomaly score elevated");
+  if (params.anomalyScore <= SEVERITY_THRESHOLDS.watch) reasons.push("Anomaly score elevated");
 
-  const statusLabel =
-    params.anomalyScore > 75 || params.deniedRate > 18 ? "DELINQUENT" : "WATCH";
+  const severity: Severity = getSeverityFromModel({
+    isAnomaly: params.isAnomaly,
+    anomalyScore: params.anomalyScore,
+  });
   return {
-    statusLabel,
+    severity,
+    statusLabel: severityLabel(severity),
     reasons: reasons.length === 0 ? ["Within expected baseline"] : reasons,
   };
 };
@@ -144,10 +155,12 @@ export const ProfileScreen = ({
 
   const status = deriveStatus({
     anomalyScore: monthlyRow.anomalyScore,
+    isAnomaly: monthlyRow.isAnomaly,
     deniedRate: monthlyRow.deniedRate,
     afterHoursRate: monthlyRow.afterHoursRate,
     rapidBadgingCount: monthlyRow.rapidBadgingCount,
   });
+  const severity = status.severity;
 
   useEffect(() => {
     if (prevModalOpen.current && !denialModalOpen && openedFromKpi) {
@@ -177,20 +190,21 @@ export const ProfileScreen = ({
       <div className="kpi-grid">
         <KpiTile
           kpiId="anomalyScore"
-          value={monthlyRow.anomalyScore}
+          value={formatAnomalyScore(monthlyRow.anomalyScore, 4)}
           sublabel={`${anomalyPercentile}th percentile`}
-          accent={monthlyRow.anomalyScore > 70 ? "danger" : "primary"}
+          accent={severityToKpiAccent(severity)}
         />
         <KpiTile
           kpiId="shannonEntropy"
           value={formatScore(monthlyRow.shannonEntropy, 2)}
           sublabel={entropyLabel(monthlyRow.shannonEntropy)}
+          accent={severityToKpiAccent(severity)}
         />
         <KpiTile
           kpiId="deniedRate"
           value={formatPercent(monthlyRow.deniedRate, 1)}
           sublabel={percentDiffLabel(monthlyRow.deniedRate, avgDeniedRate)}
-          accent={monthlyRow.deniedRate > avgDeniedRate + 5 ? "warning" : "primary"}
+          accent={severityToKpiAccent(severity)}
           comparison={percentDiffLabel(monthlyRow.deniedRate, avgDeniedRate)}
           onActivate={openDeniedFromKpi}
           ariaLabel="Open denial breakdown"
@@ -200,13 +214,13 @@ export const ProfileScreen = ({
           kpiId="afterHoursRate"
           value={formatPercent(monthlyRow.afterHoursRate, 1)}
           sublabel={formatPercent(monthlyRow.afterHoursRate, 1)}
-          accent={monthlyRow.afterHoursRate > 18 ? "danger" : "primary"}
+          accent={severityToKpiAccent(severity)}
         />
         <KpiTile
           kpiId="weekendRate"
           value={formatPercent(monthlyRow.weekendRate, 1)}
           sublabel={formatPercent(monthlyRow.weekendRate, 1)}
-          accent={monthlyRow.weekendRate > 18 ? "warning" : "primary"}
+          accent={severityToKpiAccent(severity)}
         />
       </div>
 
@@ -309,7 +323,7 @@ export const ProfileScreen = ({
         </div>
       </div>
 
-      <StatusBanner status={status.statusLabel} reasons={status.reasons} />
+      <StatusBanner severity={severity} reasons={status.reasons} />
     </section>
   );
 };

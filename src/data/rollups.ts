@@ -19,9 +19,11 @@ import {
   anomalyScoreFromIso,
 } from "./metrics";
 import { isAfterHours, isWeekend, toLocalDateKey } from "../utils/date";
+import { getSeverityFromModel, severityLabel, SEVERITY_THRESHOLDS } from "../utils/severity";
 
 const deriveStatus = (params: {
   anomalyScore: number;
+  isAnomaly: number;
   denialPercent: number;
   afterHoursRate: number;
   rapidRepeatRate: number;
@@ -30,10 +32,11 @@ const deriveStatus = (params: {
   if (params.denialPercent > 14) reasons.push("High denied rate");
   if (params.afterHoursRate > 18) reasons.push("After-hours surge");
   if (params.rapidRepeatRate > 8) reasons.push("Rapid repeat attempts");
-  if (params.anomalyScore > 70) reasons.push("Anomaly score elevated");
+  if (params.anomalyScore <= SEVERITY_THRESHOLDS.watch) reasons.push("Anomaly score elevated");
 
-  const statusLabel =
-    params.anomalyScore > 75 || params.denialPercent > 18 ? "DELINQUENT" : "WATCH";
+  const statusLabel = severityLabel(
+    getSeverityFromModel({ isAnomaly: params.isAnomaly, anomalyScore: params.anomalyScore }),
+  );
   return {
     statusLabel,
     reasons: reasons.length === 0 ? ["Within expected baseline"] : reasons,
@@ -41,7 +44,7 @@ const deriveStatus = (params: {
 };
 
 const hasTrainingOverdue = (score: number, denialPercent: number) => {
-  return score > 68 || denialPercent > 16;
+  return score <= SEVERITY_THRESHOLDS.watch || denialPercent > 16;
 };
 
 export const buildPersonProfile = (
@@ -85,6 +88,7 @@ export const buildPersonProfile = (
   const trainingOverdue = hasTrainingOverdue(anomalyScore, denialPercent);
   const status = deriveStatus({
     anomalyScore,
+    isAnomaly: person.isAnomaly,
     denialPercent,
     afterHoursRate,
     rapidRepeatRate,
@@ -97,6 +101,7 @@ export const buildPersonProfile = (
     id: person.id,
     name: person.name,
     anomalyScore,
+    isAnomaly: person.isAnomaly,
     isolationForestScore: isoScore,
     shannonEntropy: entropy,
     approvedCount,
@@ -122,6 +127,7 @@ export const buildPersonRollup = (profile: PersonProfile): PersonRollup => {
     id: profile.id,
     name: profile.name,
     anomalyScore: profile.anomalyScore,
+    isAnomaly: profile.isAnomaly,
     isolationForestScore: profile.isolationForestScore,
     shannonEntropy: profile.shannonEntropy,
     denialPercent: profile.denialPercent,

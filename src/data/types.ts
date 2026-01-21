@@ -46,12 +46,14 @@ export type PersonId = string;
 export type PersonBase = {
   id: PersonId;
   name: string;
+  isAnomaly: number;
 };
 
 export type PersonProfile = {
   id: string;
   name: string;
   anomalyScore: number;
+  isAnomaly: number;
   isolationForestScore: number;
   shannonEntropy: number;
   approvedCount: number;
@@ -75,6 +77,7 @@ export type PersonRollup = {
   id: string;
   name: string;
   anomalyScore: number;
+  isAnomaly: number;
   isolationForestScore: number;
   shannonEntropy: number;
   denialPercent: number;
@@ -89,6 +92,7 @@ export type MonthlyPersonSummary = {
   monthKey: string;
   lastEventTimestamp: string;
   anomalyScore: number;
+  isAnomaly: number;
   shannonEntropy: number;
   deniedRate: number;
   weekendRate: number;

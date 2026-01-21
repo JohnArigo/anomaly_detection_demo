@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from "react";
 import { EmptyState } from "../ui/EmptyState";
 import type { MonthlyPersonSummary } from "../../data/types";
+import { getSeverityFromModel, severityToTone } from "../../utils/severity";
 
 export type SortKey =
   | "name"
@@ -20,6 +21,8 @@ type FormatterSet = {
   formatNumber: (value: number) => string;
   formatPercent: (value: number, precision?: number) => string;
   formatScore: (value: number, precision?: number) => string;
+  formatAnomalyScore: (value: number, decimals?: number) => string;
+  formatAnomalyScoreFull: (value: number, decimals?: number) => string;
   formatDate: (value: string) => string;
   formatTime: (value: string) => string;
 };
@@ -32,27 +35,12 @@ type RosterTableProps = {
   highlightedId: string | null;
   onActivatePerson: (personId: string) => void;
   onRowKeyDown: (event: KeyboardEvent<HTMLDivElement>, personId: string) => void;
-  anomalyTone: (score: number) => "danger" | "warning" | "neutral";
   formatters: FormatterSet;
-};
-
-type Severity = "delinquent" | "watch" | "normal";
-
-const getSeverity = (score: number): Severity => {
-  if (score >= 90) return "delinquent";
-  if (score >= 70) return "watch";
-  return "normal";
 };
 
 const toAriaSort = (active: boolean, dir: SortDirection) => {
   if (!active) return "none";
   return dir === "asc" ? "ascending" : "descending";
-};
-
-const severityLabel = (severity: Severity) => {
-  if (severity === "delinquent") return "DELINQUENT";
-  if (severity === "watch") return "WATCH";
-  return "NORMAL";
 };
 
 export const RosterTable = ({
@@ -63,13 +51,14 @@ export const RosterTable = ({
   highlightedId,
   onActivatePerson,
   onRowKeyDown,
-  anomalyTone,
   formatters,
 }: RosterTableProps) => {
   const {
     formatNumber,
     formatPercent,
     formatScore,
+    formatAnomalyScore,
+    formatAnomalyScoreFull,
     formatDate,
     formatTime,
   } = formatters;
@@ -78,7 +67,7 @@ export const RosterTable = ({
     <section className="roster-table" role="table" aria-label="Personnel roster">
       <div className="roster-table__header" role="row">
         <div
-          className="roster-cell roster-cell--name"
+          className="roster-cell roster-cell--name col--name col--tier1"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "name", sortDir)}
         >
@@ -95,7 +84,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--anomaly col--tier1"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "anomalyScore", sortDir)}
         >
@@ -110,7 +99,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--entropy col--tier2"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "shannonEntropy", sortDir)}
         >
@@ -125,7 +114,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--denied col--tier1"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "deniedRate", sortDir)}
         >
@@ -140,7 +129,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--after col--tier2"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "afterHoursRate", sortDir)}
         >
@@ -156,7 +145,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--weekend col--tier2"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "weekendRate", sortDir)}
         >
@@ -171,7 +160,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--devices col--tier2"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "uniqueDeviceCount", sortDir)}
         >
@@ -186,7 +175,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--rapid col--tier2"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "rapidBadgingCount", sortDir)}
         >
@@ -201,7 +190,7 @@ export const RosterTable = ({
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--num"
+          className="roster-cell roster-cell--num col--days col--tier2"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "daysActive", sortDir)}
         >
@@ -211,13 +200,12 @@ export const RosterTable = ({
               sortKey === "daysActive" ? `roster-th--sorted ${sortDir}` : ""
             }`.trim()}
             onClick={() => onSort("daysActive")}
-            aria-label="Days Active"
           >
             <span className="roster-th__label">Days</span>
           </button>
         </div>
         <div
-          className="roster-cell roster-cell--date"
+          className="roster-cell roster-cell--date col--last col--tier1"
           role="columnheader"
           aria-sort={toAriaSort(sortKey === "lastEventTimestamp", sortDir)}
         >
@@ -232,9 +220,6 @@ export const RosterTable = ({
             <span className="roster-th__label">Last Badge</span>
           </button>
         </div>
-        <div className="roster-cell roster-cell--action" role="columnheader">
-          <span className="sr-only">Action</span>
-        </div>
       </div>
 
       <div className="roster-table__body" role="rowgroup">
@@ -242,75 +227,68 @@ export const RosterTable = ({
           <EmptyState title="No results" description="Try adjusting filters." />
         ) : (
           rows.map((person) => {
-            const severity = getSeverity(person.anomalyScore);
+            const severity = getSeverityFromModel({
+              isAnomaly: person.isAnomaly,
+              anomalyScore: person.anomalyScore,
+            });
+            const anomalyTone = severityToTone(severity);
+            const anomalyDisplay = formatAnomalyScore(person.anomalyScore, 4);
+            const anomalyFull = formatAnomalyScoreFull(person.anomalyScore, 6);
             return (
               <div
                 key={`${person.monthKey}-${person.personId}`}
                 role="row"
                 tabIndex={0}
                 aria-label={`Open ${person.name}`}
-                data-severity={severity}
                 className={`roster-row ${highlightedId === person.personId ? "row--active" : ""}`.trim()}
                 onClick={() => onActivatePerson(person.personId)}
                 onKeyDown={(event) => onRowKeyDown(event, person.personId)}
               >
-                <div className="roster-cell roster-cell--name" role="cell">
+                <div className="roster-cell roster-cell--name col--name col--tier1" role="cell">
                   <div className="roster-name">
                     <div className="avatar">{person.name.charAt(0)}</div>
                     <div className="roster-name__text">
                       <div className="roster-name__top">
                         <span className="roster-name__value">{person.name}</span>
-                        <span className={`severity-badge severity-badge--${severity}`}>
-                          {severityLabel(severity)}
-                        </span>
                       </div>
                       <div className="roster-name__sub">{person.monthKey}</div>
                     </div>
                   </div>
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
-                  <span className={`anomaly-chip anomaly-chip--${anomalyTone(person.anomalyScore)}`}>
-                    {person.anomalyScore}
+                <div className="roster-cell roster-cell--num col--anomaly col--tier1" role="cell">
+                  <span
+                    className={`anomaly-chip anomaly-chip--${anomalyTone}`}
+                    title={anomalyFull}
+                  >
+                    {anomalyDisplay}
                   </span>
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
+                <div className="roster-cell roster-cell--num col--entropy col--tier2" role="cell">
                   {formatScore(person.shannonEntropy, 2)}
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
+                <div className="roster-cell roster-cell--num col--denied col--tier1" role="cell">
                   {formatPercent(person.deniedRate, 1)}
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
+                <div className="roster-cell roster-cell--num col--after col--tier2" role="cell">
                   {formatPercent(person.afterHoursRate, 1)}
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
+                <div className="roster-cell roster-cell--num col--weekend col--tier2" role="cell">
                   {formatPercent(person.weekendRate, 1)}
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
+                <div className="roster-cell roster-cell--num col--devices col--tier2" role="cell">
                   {formatNumber(person.uniqueDeviceCount)}
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
+                <div className="roster-cell roster-cell--num col--rapid col--tier2" role="cell">
                   {formatNumber(person.rapidBadgingCount)}
                 </div>
-                <div className="roster-cell roster-cell--num" role="cell">
+                <div className="roster-cell roster-cell--num col--days col--tier2" role="cell">
                   {formatNumber(person.badgedDays.length)}
                 </div>
-                <div className="roster-cell roster-cell--date" role="cell">
+                <div className="roster-cell roster-cell--date col--last col--tier1" role="cell">
                   <div className="last-badge">
                     <span>{formatDate(person.lastEventTimestamp)}</span>
                     <span className="last-badge__time">{formatTime(person.lastEventTimestamp)}</span>
                   </div>
-                </div>
-                <div className="roster-cell roster-cell--action" role="cell">
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--small"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onActivatePerson(person.personId);
-                    }}
-                  >
-                    Open
-                  </button>
                 </div>
               </div>
             );

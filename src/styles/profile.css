@@ -200,6 +200,12 @@
   border: 1px solid var(--status-warn);
 }
 
+.status--normal {
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

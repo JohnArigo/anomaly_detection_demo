@@ -11,7 +11,6 @@ type TopBarProps = {
   monthKey: string;
   monthOptions: string[];
   onMonthChange: (monthKey: string) => void;
-  onBack: () => void;
 };
 
 export const TopBar = ({
@@ -23,7 +22,6 @@ export const TopBar = ({
   monthKey,
   monthOptions,
   onMonthChange,
-  onBack,
 }: TopBarProps) => {
   const isProfile = activeView === "profile";
   const hasSelection = Boolean(selectedPersonId);
@@ -43,14 +41,6 @@ export const TopBar = ({
         </div>
         {isProfile && (
           <div className="topbar__crumbs">
-            <button
-              type="button"
-              className="btn btn--ghost btn--small"
-              onClick={onBack}
-              aria-label="Back to roster"
-            >
-              Back
-            </button>
             <span className="crumb">Roster</span>
             <span className="crumb__divider">/</span>
             <span className="crumb crumb--active">Profile</span>

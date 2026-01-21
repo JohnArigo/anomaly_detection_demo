@@ -289,6 +289,7 @@ export const peopleBase: PersonBase[] = Array.from({ length: PERSON_COUNT }, (_,
   return {
     id,
     name: buildName(index),
+    isAnomaly: 1,
   };
 });
 
@@ -313,6 +314,18 @@ const traitsByPerson = peopleBase.map((person, index) => {
 export const badgeEvents: BadgeEvent[] = peopleBase.flatMap((person, index) =>
   generateEvents(person.id, seedFromString(person.id), traitsByPerson[index]),
 );
+
+const initialSummaries = buildMonthlySummaries(peopleBase, badgeEvents, defaultMonthKey);
+const anomalyCount = Math.max(1, Math.floor(initialSummaries.length * 0.12));
+const anomalyIds = new Set(
+  [...initialSummaries]
+    .sort((a, b) => a.anomalyScore - b.anomalyScore)
+    .slice(0, anomalyCount)
+    .map((row) => row.personId),
+);
+peopleBase.forEach((person) => {
+  person.isAnomaly = anomalyIds.has(person.id) ? -1 : 1;
+});
 
 export const monthlySummaries = buildMonthlySummaries(
   peopleBase,
