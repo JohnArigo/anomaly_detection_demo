@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PersonOption } from "../ui/PersonSelect";
 import type { View } from "../../types/navigation";
 import { PersonCombobox } from "../PersonCombobox";
