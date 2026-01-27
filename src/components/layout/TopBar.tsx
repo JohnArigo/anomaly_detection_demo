@@ -1,6 +1,9 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PersonOption } from "../ui/PersonSelect";
 import type { View } from "../../types/navigation";
 import { PersonCombobox } from "../PersonCombobox";
+import { MonthPicker } from "../ui/MonthPicker";
+import "./TopBarSearch.css";
 
 type TopBarProps = {
   activeView: View;
@@ -23,6 +26,9 @@ export const TopBar = ({
   monthOptions,
   onMonthChange,
 }: TopBarProps) => {
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchButtonRef = useRef<HTMLButtonElement | null>(null);
+  const searchWrapRef = useRef<HTMLDivElement | null>(null);
   const isProfile = activeView === "profile";
   const hasSelection = Boolean(selectedPersonId);
   const selectedLabel =
@@ -31,6 +37,35 @@ export const TopBar = ({
     value: person.id,
     label: person.name,
   }));
+
+  useEffect(() => {
+    if (!isSearchExpanded) return;
+    const input = searchWrapRef.current?.querySelector("input");
+    if (input instanceof HTMLInputElement) {
+      window.requestAnimationFrame(() => input.focus());
+    }
+  }, [isSearchExpanded]);
+
+  useEffect(() => {
+    if (!isSearchExpanded) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsSearchExpanded(false);
+        searchButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isSearchExpanded]);
+
+  const onToggleSearch = () => {
+    if (isSearchExpanded) {
+      setIsSearchExpanded(false);
+      searchButtonRef.current?.focus();
+      return;
+    }
+    setIsSearchExpanded(true);
+  };
 
   return (
     <header className="topbar">
@@ -77,29 +112,55 @@ export const TopBar = ({
       </nav>
 
       <div className="topbar__actions topbar__right">
-        <label className="select">
-          <select
-            value={monthKey}
-            onChange={(event) => onMonthChange(event.target.value)}
+        <div className="topbar-search">
+          <button
+            ref={searchButtonRef}
+            type="button"
+            className="topbar-search__toggle"
+            aria-label={isSearchExpanded ? "Close search" : "Open search"}
+            onClick={onToggleSearch}
           >
-            {monthOptions.map((key) => (
-              <option key={key} value={key}>
-                {key}
-              </option>
-            ))}
-          </select>
-        </label>
+            <svg
+              className="topbar-search__icon"
+              viewBox="0 0 20 20"
+              role="img"
+              aria-hidden="true"
+            >
+              <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+              <line
+                x1="13.5"
+                y1="13.5"
+                x2="18"
+                y2="18"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
 
-        <PersonCombobox
-          options={rosterOptions}
-          selectedValue={selectedPersonId || null}
-          selectedLabel={selectedLabel}
-          onSelect={(personId) => {
-            onSelectPerson(personId);
-            onNavigate("profile");
-          }}
-          isProfile={isProfile}
-        />
+          {isSearchExpanded && (
+            <div className="topBarSearchBlock" ref={searchWrapRef}>
+              <MonthPicker
+                monthKey={monthKey}
+                monthOptions={monthOptions}
+                onChange={onMonthChange}
+                ariaLabel="Select month"
+              />
+              <PersonCombobox
+                options={rosterOptions}
+                selectedValue={selectedPersonId || null}
+                selectedLabel={selectedLabel}
+                onSelect={(personId) => {
+                  onSelectPerson(personId);
+                  onNavigate("profile");
+                  setIsSearchExpanded(false);
+                }}
+                isProfile={isProfile}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

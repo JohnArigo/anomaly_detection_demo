@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { EmptyState } from "../ui/EmptyState";
-import { getAnomalyStatus } from "../../utils/severity";
 import { formatScore } from "../../utils/format";
 import { parseJsonSafely } from "../../utils/json";
 import { formatDate, formatTime } from "../../utils/date";
@@ -188,7 +187,6 @@ export const LLMSummaryModal = ({
 
   if (!isOpen) return null;
 
-  const status = getAnomalyStatus(isAnomaly);
   const data = parsed.data ?? {};
   const detectionStatus = getDetectionStatus(isAnomaly);
   const peerContext = getPeerContextLabel(data);

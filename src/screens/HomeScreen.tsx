@@ -6,6 +6,8 @@ import { FilterChip } from "../components/ui/FilterChip";
 import { FilterDrawer } from "../components/filters/FilterDrawer";
 import { PersonCombobox } from "../components/PersonCombobox";
 import { RosterCards } from "../components/roster/RosterCards";
+import { MonthPicker } from "../components/ui/MonthPicker";
+import { EmptyState } from "../components/ui/EmptyState";
 import { formatNumber, formatRate, formatScore } from "../utils/format";
 
 type HomeScreenProps = {
@@ -190,17 +192,24 @@ export const HomeScreen = ({
           </div>
 
           <Panel title="Personnel" className="panel--ghost">
-            <RosterCards
-              rows={pageRows}
-              highlightedId={highlightedId}
-              onActivatePerson={activatePerson}
-              onRowKeyDown={onRowKeyDown}
-              formatters={{
-                formatNumber,
-                formatRate,
-                formatScore,
-              }}
-            />
+            {pageRows.length === 0 ? (
+              <EmptyState
+                title="No personnel found"
+                description="Try adjusting your filters or search terms."
+              />
+            ) : (
+              <RosterCards
+                rows={pageRows}
+                highlightedId={highlightedId}
+                onActivatePerson={activatePerson}
+                onRowKeyDown={onRowKeyDown}
+                formatters={{
+                  formatNumber,
+                  formatRate,
+                  formatScore,
+                }}
+              />
+            )}
           </Panel>
         </div>
       </div>
@@ -213,19 +222,12 @@ export const HomeScreen = ({
         <div className="filters-panel">
           <div className="filter-section">
             <div className="filter-title">Month</div>
-            <label className="select">
-              <select
-                value={activeMonthKey}
-                onChange={(event) => onMonthChange(event.target.value)}
-                aria-label="Select month"
-              >
-                {monthOptions.map((monthKey) => (
-                  <option key={monthKey} value={monthKey}>
-                    {monthKey}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <MonthPicker
+              monthKey={activeMonthKey}
+              monthOptions={monthOptions}
+              onChange={onMonthChange}
+              ariaLabel="Select month"
+            />
           </div>
 
           <div className="filter-section">
