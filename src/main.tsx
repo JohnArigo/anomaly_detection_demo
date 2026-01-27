@@ -10,12 +10,16 @@ import "./styles/forms.css";
 import "./styles/panels.css";
 import "./styles/chips.css";
 import "./styles/table.css";
-import "./components/roster/rosterTable.css";
+import "./components/roster/RosterCards.css";
 import "./styles/home.css";
 import "./styles/profile.css";
+import "./styles/drivers.css";
+import "./styles/evidence.css";
 import "./styles/modal.css";
 import "./styles/tooltip.css";
 import "./components/filters/filterDrawer.css";
+import "./components/profile/LLMSummaryModal.css";
+import "./components/profile/ProfileHeaderActions.css";
 
 const rootElement = document.getElementById("root");
 

@@ -1,54 +1,51 @@
 import { useEffect, useId, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { formatDate, formatTime } from "../../utils/date";
-import { formatNumber, formatPercent } from "../../utils/format";
+import type { BaseEvent, JoinedRow } from "../../data/types";
+import { formatNumber, formatRate } from "../../utils/format";
 import { Panel } from "./Panel";
-import { DonutChart } from "./DonutChart";
-import { BadgePill } from "./BadgePill";
-import { IconButton } from "./IconButton";
 import { EmptyState } from "./EmptyState";
-import { badgeEvents, peopleBase } from "../../data/mock";
-import { getPersonById } from "../../data/selectors";
-
-const reasonColors: Record<string, string> = {
-  "Expired Badge": "var(--danger)",
-  "Time Restricted": "var(--warn)",
-  "Invalid Entry Code": "var(--accent)",
-  "No Access": "var(--muted-strong)",
-  Unknown: "var(--muted)",
-};
 
 type DenialBreakdownModalProps = {
   isOpen: boolean;
   personId: string | null;
   monthKey: string | null;
-  highlightedEventId?: string | null;
+  rows: JoinedRow[];
   onClose: () => void;
 };
 
-const getFocusable = (root: HTMLElement) => {
-  const elements = Array.from(
-    root.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    ),
-  );
-  return elements.filter((el) => !el.hasAttribute("disabled") && !el.getAttribute("aria-hidden"));
+const safeParse = <T,>(value: string): T | null => {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
 };
 
 export const DenialBreakdownModal = ({
   isOpen,
   personId,
   monthKey,
-  highlightedEventId,
+  rows,
   onClose,
 }: DenialBreakdownModalProps) => {
   const titleId = useId();
   const modalRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const person = useMemo(
-    () => getPersonById(personId, peopleBase, badgeEvents),
-    [personId],
+  const row = useMemo(
+    () =>
+      rows.find(
+        (item) =>
+          item.cardholder_name === personId &&
+          `${item.year}-${String(item.month).padStart(2, "0")}` === monthKey,
+      ) ?? null,
+    [rows, personId, monthKey],
   );
+
+  const deniedEvents = useMemo(() => {
+    if (!isOpen || !row) return [];
+    const events = safeParse<BaseEvent[]>(row.all_events) ?? [];
+    return events.filter((event) => event.outcome.toLowerCase().includes("denied"));
+  }, [isOpen, row]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -62,13 +59,7 @@ export const DenialBreakdownModal = ({
 
   if (!isOpen) return null;
 
-  const totalDenied = person?.deniedCount ?? 0;
-  const donutData =
-    person?.denialReasons.map((reason) => ({
-      label: reason.reason,
-      value: reason.count,
-      color: reasonColors[reason.reason] ?? "var(--muted)",
-    })) ?? [];
+  const totalDenied = Number(row?.Denied_count ?? deniedEvents.length ?? 0);
 
   return createPortal(
     <div className="modal-overlay" role="presentation" onMouseDown={onClose}>
@@ -81,7 +72,11 @@ export const DenialBreakdownModal = ({
         onMouseDown={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           if (event.key !== "Tab" || !modalRef.current) return;
-          const focusable = getFocusable(modalRef.current);
+          const focusable = Array.from(
+            modalRef.current.querySelectorAll<HTMLElement>(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+            ),
+          ).filter((el) => !el.hasAttribute("disabled"));
           if (focusable.length === 0) {
             event.preventDefault();
             modalRef.current.focus();
@@ -104,154 +99,60 @@ export const DenialBreakdownModal = ({
             <div id={titleId} className="modal__title">
               Badge Denial Breakdown
             </div>
-            <div className="modal__meta">
-              {person && (
-                <>
-                  <span className="modal__metaItem">
-                    Last Badge: {formatDate(person.lastBadgeTimestamp)}{" "}
-                    {formatTime(person.lastBadgeTimestamp)}
-                  </span>
-                  <span className="modal__metaItem">
-                    Total Denied Attempts: {formatNumber(totalDenied)}
-                  </span>
-                </>
-              )}
-              {monthKey && <span className="modal__metaItem">Month: {monthKey}</span>}
-            </div>
-          </div>
-          <IconButton label="Close" icon="X" onClick={onClose} buttonRef={closeButtonRef} />
-        </div>
-        <div className="modal__body">
-          {!person ? (
-            <EmptyState title="Select a person" description="Choose a person to view denial details." />
-          ) : (
-            <>
-              <div className="denial-layout">
-                <Panel title="Denied Attempts">
-                  <div className="denial-chart">
-                    <DonutChart data={donutData} totalLabel="Denied" />
-                  </div>
-                </Panel>
-
-                <Panel title="Denial Reasons">
-                  {person.denialReasons.length === 0 ? (
-                    <EmptyState title="No denied events" description="No breakdown available." />
-                  ) : (
-                    <div className="list">
-                      {person.denialReasons.map((reason) => (
-                        <div key={reason.reason} className="list__row">
-                          <span className="list__label">{reason.reason}</span>
-                          <span className="list__value">
-                            {formatNumber(reason.count)}
-                            <span className="list__muted">
-                              {formatPercent(
-                                totalDenied === 0 ? 0 : (reason.count / totalDenied) * 100,
-                                1,
-                              )}
-                            </span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="subsection-title">Top Flags</div>
-                  {person.topFlags.length === 0 ? (
-                    <EmptyState title="No flags" />
-                  ) : (
-                    <div className="list">
-                      {person.topFlags.slice(0, 6).map((flag) => (
-                        <div key={flag.flag} className="list__row">
-                          <span className="list__label">{flag.flag}</span>
-                          <span className="list__value">{formatNumber(flag.count)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Panel>
-
-                <Panel title="Summary Mirror" className="denial-mirror">
-                  <div className="subsection-title">Denial Reasons</div>
-                  <div className="list">
-                    {person.denialReasons.slice(0, 4).map((reason) => (
-                      <div key={`mirror-${reason.reason}`} className="list__row">
-                        <span>{reason.reason}</span>
-                        <span className="list__value">{formatNumber(reason.count)}</span>
-                      </div>
-                    ))}
-                    {person.denialReasons.length === 0 && <EmptyState title="No denies" />}
-                  </div>
-                  <div className="subsection-title">Top Flags</div>
-                  <div className="list">
-                    {person.topFlags.slice(0, 4).map((flag) => (
-                      <div key={`mirror-flag-${flag.flag}`} className="list__row">
-                        <span>{flag.flag}</span>
-                        <span className="list__value">{formatNumber(flag.count)}</span>
-                      </div>
-                    ))}
-                    {person.topFlags.length === 0 && <EmptyState title="No flags" />}
-                  </div>
-                </Panel>
+            {row && (
+              <div className="modal__meta">
+                <span className="modal__metaItem">
+                  Month: {monthKey}
+                </span>
+                <span className="modal__metaItem">
+                  Total Denied Attempts: {formatNumber(totalDenied)}
+                </span>
+                <span className="modal__metaItem">
+                  Denial Rate: {formatRate(row.denial_rate, 1)}
+                </span>
               </div>
+            )}
+          </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="btn btn--ghost"
+            onClick={onClose}
+            aria-label="Close denial breakdown"
+          >
+            Close
+          </button>
+        </div>
 
-              <Panel title="Most Recent Denied Events">
-                <div className="table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Timestamp</th>
-                        <th>Scanner</th>
-                        <th>Denial Reason</th>
-                        <th>Flags</th>
-                        <th></th>
+        <div className="modal__body">
+          <Panel title="Most Recent Denied Events">
+            {deniedEvents.length === 0 ? (
+              <EmptyState title="No denied events" />
+            ) : (
+              <div className="modal-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Event Type</th>
+                      <th>Device</th>
+                      <th>Location</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deniedEvents.slice(0, 20).map((event, index) => (
+                      <tr key={`${event.timestamp}-${index}`}>
+                        <td>{event.timestamp}</td>
+                        <td>{event.event_type}</td>
+                        <td>{event.device}</td>
+                        <td>{event.location}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {person.recentEvents
-                        .filter((event) => event.outcome === "denied")
-                        .slice(0, 12)
-                        .map((event) => (
-                          <tr
-                            key={event.id}
-                            className={
-                              highlightedEventId === event.id ? "row--active" : undefined
-                            }
-                          >
-                            <td>{`${formatDate(event.timestamp)} ${formatTime(event.timestamp)}`}</td>
-                            <td>{event.scannerName}</td>
-                            <td>{event.denialReason ?? "Unknown"}</td>
-                            <td>
-                              <div className="table__pills">
-                                {event.flags.length === 0 && (
-                                  <BadgePill label="None" variant="neutral" />
-                                )}
-                                {event.flags.map((flag) => (
-                                  <BadgePill
-                                    key={`${event.id}-${flag}`}
-                                    label={flag}
-                                    variant={flag === "After-Hours" ? "after-hours" : "flag"}
-                                  />
-                                ))}
-                              </div>
-                            </td>
-                            <td>
-                              <IconButton label="Dismiss" icon="X" />
-                            </td>
-                          </tr>
-                        ))}
-                      {person.deniedCount === 0 && (
-                        <tr>
-                          <td colSpan={5} className="table__empty">
-                            No denied events available
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Panel>
-            </>
-          )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
         </div>
       </div>
     </div>,

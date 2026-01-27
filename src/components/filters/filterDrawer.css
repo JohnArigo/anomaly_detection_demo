@@ -2,17 +2,18 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 9998;
+  z-index: 9997;
 }
 
 .filter-drawer__scrim {
   position: absolute;
   inset: 0;
-  background: rgba(5, 7, 12, 0.6);
-  border: none;
-  padding: 0;
+  background: rgba(5, 7, 12, 0.7);
   opacity: 0;
   transition: opacity var(--t-med) var(--ease-out);
+  border: none;
+  padding: 0;
+  pointer-events: none;
 }
 
 .filter-drawer__panel {
@@ -20,39 +21,15 @@
   top: 0;
   left: 0;
   height: 100%;
-  width: min(340px, 90vw);
+  width: min(360px, 92vw);
   background: var(--panel-bg);
   border-right: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-2);
   transform: translateX(-100%);
   transition: transform var(--t-med) var(--ease-out);
+  pointer-events: none;
   display: flex;
   flex-direction: column;
-}
-
-.filter-drawer__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-2);
-}
-
-.filter-drawer__title {
-  font-size: var(--text-md);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-muted);
-}
-
-.filter-drawer__body {
-  padding: var(--space-3);
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
 }
 
 .filter-drawer--open {
@@ -61,21 +38,39 @@
 
 .filter-drawer--open .filter-drawer__scrim {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .filter-drawer--open .filter-drawer__panel {
   transform: translateX(0);
+  pointer-events: auto;
+}
+
+.filter-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.filter-drawer__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.filter-drawer__body {
+  padding: var(--space-4);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .filter-drawer__scrim,
   .filter-drawer__panel {
     transition: none;
-  }
-}
-
-@media (max-width: 600px) {
-  .filter-drawer__panel {
-    width: 100vw;
   }
 }

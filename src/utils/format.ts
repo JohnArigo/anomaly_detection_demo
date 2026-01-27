@@ -8,6 +8,10 @@ export const formatPercent = (value: number, decimals = 0) => {
   return `${round(value, decimals).toFixed(decimals)}%`;
 };
 
+export const formatRate = (value: number, decimals = 1) => {
+  return `${round(value * 100, decimals).toFixed(decimals)}%`;
+};
+
 export const formatRatio = (value: number, decimals = 2) => {
   return round(value, decimals).toFixed(decimals);
 };

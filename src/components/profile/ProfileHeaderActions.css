@@ -1,0 +1,33 @@
+.profile-header-action {
+  display: flex;
+  align-items: center;
+}
+
+.screen--profile .screen-header__meta {
+  align-items: center;
+}
+
+.screen--profile .screen-header__metaItem {
+  display: flex;
+  align-items: center;
+}
+
+.profile-summary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+
+.profile-summary-button:hover {
+  background: var(--panel-hover);
+  border-color: var(--border-strong);
+}
+
+.profile-summary-button:focus-visible {
+  box-shadow: var(--focus);
+}

@@ -4,37 +4,32 @@ import { TopBar } from "./components/layout/TopBar";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { DenialBreakdownModal } from "./components/ui/DenialBreakdownModal";
-import { badgeEvents, baseNow, peopleBase } from "./data/mock";
-import { buildMonthlySummaries, listMonthKeys, toMonthKey } from "./data/monthly";
-import type { View } from "./types/navigation";
+import { baseTable, explanationTable } from "./data/mock";
+import { joinRows, listMonthKeys, toMonthKey } from "./data/join";
 import type { PersonId } from "./data/types";
-
-const getNewestMonthKey = () => {
-  const keys = listMonthKeys(badgeEvents);
-  return keys[0] ?? toMonthKey(baseNow.toISOString());
-};
+import type { View } from "./types/navigation";
 
 export const App = () => {
   const [activeView, setActiveView] = useState<View>("home");
-  const [activePersonId, setActivePersonId] = useState<PersonId | null>(
-    peopleBase[0]?.id ?? null,
+  const joinedRows = useMemo(() => joinRows(baseTable, explanationTable), []);
+  const monthOptions = useMemo(() => listMonthKeys(baseTable), []);
+  const [activeMonthKey, setActiveMonthKey] = useState<string>(() => monthOptions[0]);
+  const monthRows = useMemo(
+    () => joinedRows.filter((row) => toMonthKey(row.year, row.month) === activeMonthKey),
+    [joinedRows, activeMonthKey],
   );
-  const [activeMonthKey, setActiveMonthKey] = useState<string>(() => getNewestMonthKey());
+  const [activePersonId, setActivePersonId] = useState<PersonId | null>(
+    monthRows[0]?.cardholder_name ?? null,
+  );
   const [denialModal, setDenialModal] = useState<{
     isOpen: boolean;
     personId: PersonId | null;
     monthKey: string | null;
-    highlightedEventId?: string | null;
   }>({
     isOpen: false,
     personId: null,
     monthKey: null,
-    highlightedEventId: null,
   });
-  const monthRoster = useMemo(
-    () => buildMonthlySummaries(peopleBase, badgeEvents, activeMonthKey),
-    [activeMonthKey],
-  );
 
   const onSelectPerson = (personId: PersonId) => {
     setActivePersonId(personId);
@@ -44,24 +39,16 @@ export const App = () => {
     setActiveView(view);
   };
 
-  const openDenialModal = (
-    personId: PersonId,
-    monthKey: string,
-    highlightedEventId?: string | null,
-  ) => {
+  const openDenialModal = (personId: PersonId, monthKey: string) => {
     setDenialModal({
       isOpen: true,
       personId,
       monthKey,
-      highlightedEventId: highlightedEventId ?? null,
     });
   };
 
   const closeDenialModal = () => {
-    setDenialModal((prev) => ({
-      ...prev,
-      isOpen: false,
-    }));
+    setDenialModal((prev) => ({ ...prev, isOpen: false }));
   };
 
   return (
@@ -70,31 +57,39 @@ export const App = () => {
         <TopBar
           activeView={activeView}
           onNavigate={onNavigate}
-          people={monthRoster.map((person) => ({ id: person.personId, name: person.name }))}
+          people={monthRows.map((person) => ({
+            id: person.cardholder_name,
+            name: person.cardholder_name,
+          }))}
           selectedPersonId={activePersonId ?? ""}
           onSelectPerson={(personId) => {
             setActivePersonId(personId);
             setActiveView("profile");
           }}
           monthKey={activeMonthKey}
-          monthOptions={listMonthKeys(badgeEvents)}
-          onMonthChange={setActiveMonthKey}
+          monthOptions={monthOptions}
+          onMonthChange={(monthKey) => {
+            setActiveMonthKey(monthKey);
+            setActiveView("home");
+          }}
         />
       }
     >
       {activeView === "home" && (
         <HomeScreen
+          rows={monthRows}
+          activeMonthKey={activeMonthKey}
+          monthOptions={monthOptions}
+          onMonthChange={setActiveMonthKey}
           onSelectPerson={onSelectPerson}
           onNavigate={onNavigate}
-          activeMonthKey={activeMonthKey}
-          onMonthChange={setActiveMonthKey}
         />
       )}
       {activeView === "profile" && (
         <ProfileScreen
+          rows={joinedRows}
           personId={activePersonId}
           monthKey={activeMonthKey}
-          denialModalOpen={denialModal.isOpen}
           onOpenDenialModal={openDenialModal}
         />
       )}
@@ -103,7 +98,7 @@ export const App = () => {
           isOpen={denialModal.isOpen}
           personId={denialModal.personId}
           monthKey={denialModal.monthKey}
-          highlightedEventId={denialModal.highlightedEventId}
+          rows={joinedRows}
           onClose={closeDenialModal}
         />
       )}

@@ -4,17 +4,78 @@
   gap: var(--space-4);
 }
 
-.filter-row {
+.home-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.home-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 55%),
+    var(--panel-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-1);
 }
 
-.filter-tabs {
+.home-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.home-subtitle {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.chip-row {
   display: flex;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.sort-pill {
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
+}
+
+.sort-pill:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--panel-hover);
+}
+
+.sort-pill--active {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px rgba(89, 214, 255, 0.2);
 }
 
 .filters-panel {
@@ -41,107 +102,11 @@
   color: var(--text-muted);
 }
 
-.filter-hint {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
 .filter-actions {
   display: flex;
   gap: var(--space-2);
   margin-top: var(--space-2);
   justify-content: flex-end;
-}
-
-.home-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.home-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.roster-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-1);
-  background-image: var(--panel-sheen);
-}
-
-.roster-header__left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.roster-header__center {
-  text-align: center;
-}
-
-.roster-header__title {
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-
-.roster-header__subtitle {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.roster-header__right {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.month-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border-default);
-  background: var(--surface-2);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.roster-count {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  color: var(--text-primary);
-}
-
-.chip-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.chip-row__meta {
-  margin-left: auto;
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  border: 1px solid var(--border-default);
 }
 
 .filters-button {
@@ -184,80 +149,8 @@
 }
 
 @media (max-width: 900px) {
-  .chip-row__meta {
-    margin-left: 0;
-  }
-
-  .roster-header {
-    grid-template-columns: 1fr;
-    text-align: left;
-  }
-
-  .roster-header__center {
-    text-align: left;
-  }
-
-  .roster-header__right {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 600px) {
-  .kpi-row {
-    grid-template-columns: 1fr;
-  }
-
   .home-toolbar {
-    width: 100%;
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 900px) {
-  .filters-toggle {
-    display: inline-flex;
-  }
-
-  .filters-close {
-    display: inline-flex;
-  }
-
-  .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    width: min(82vw, 360px);
-    transform: translateX(-100%);
-    transition: transform var(--t-med) var(--ease-out);
-    z-index: 9999;
-  }
-
-  .home--filters-open .sidebar {
-    transform: translateX(0);
-  }
-
-  .filters-panel {
-    height: 100%;
-    border-radius: 0;
-    border-left: none;
-    border-right: 1px solid var(--border-subtle);
-  }
-
-  .filters-panel .panel__body {
-    max-height: calc(100vh - 120px);
-    overflow: auto;
-  }
-
-  .filters-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 7, 12, 0.6);
-    border: none;
-    padding: 0;
-    z-index: 9998;
-  }
-
-  .home--filters-open .filters-backdrop {
-    display: block;
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

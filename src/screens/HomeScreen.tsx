@@ -1,216 +1,91 @@
 import { useMemo, useRef, useState } from "react";
-import {
-  formatAnomalyScore,
-  formatAnomalyScoreFull,
-  formatNumber,
-  formatPercent,
-  formatScore,
-} from "../utils/format";
-import { formatDate, formatTime } from "../utils/date";
+import type { JoinedRow } from "../data/types";
+import type { View } from "../types/navigation";
 import { Panel } from "../components/ui/Panel";
 import { FilterChip } from "../components/ui/FilterChip";
-import type { View } from "../types/navigation";
-import { badgeEvents, peopleBase } from "../data/mock";
-import type { DenialReason, MonthlyPersonSummary } from "../data/types";
-import { buildMonthlySummaries, denialReasonOptions, listMonthKeys } from "../data/monthly";
-import { RosterTable, type SortDirection, type SortKey } from "../components/roster/RosterTable";
 import { FilterDrawer } from "../components/filters/FilterDrawer";
 import { PersonCombobox } from "../components/PersonCombobox";
+import { RosterCards } from "../components/roster/RosterCards";
+import { formatNumber, formatRate, formatScore } from "../utils/format";
 
-type RangeFilter = { min: string; max: string };
+type HomeScreenProps = {
+  rows: JoinedRow[];
+  activeMonthKey: string;
+  monthOptions: string[];
+  onMonthChange: (monthKey: string) => void;
+  onSelectPerson: (personId: string) => void;
+  onNavigate: (view: View) => void;
+};
+
+type StatusFilter = "all" | "flagged" | "normal";
 
 type HomeFilters = {
   nameQuery: string;
-  deviceQuery: string;
-  anomalyRange: RangeFilter;
-  deniedRateRange: RangeFilter;
-  afterHoursRateRange: RangeFilter;
-  weekendRateRange: RangeFilter;
-  shannonEntropyRange: RangeFilter;
-  uniqueDeviceCountRange: RangeFilter;
-  uniqueDeviceStdDevRange: RangeFilter;
-  rapidBadgingCountRange: RangeFilter;
-  daysActiveRange: RangeFilter;
-  denialReasons: DenialReason[];
+  status: StatusFilter;
 };
 
-type HomeScreenProps = {
-  onSelectPerson: (personId: string) => void;
-  onNavigate: (view: View) => void;
-  activeMonthKey: string;
-  onMonthChange: (monthKey: string) => void;
-};
+type SortKey = "iforest_score" | "denial_rate" | "off_hours_ratio" | "weekend_ratio" | "count_events";
+type SortDirection = "asc" | "desc";
 
-const emptyRange = (): RangeFilter => ({ min: "", max: "" });
-
-const defaultFilters = (): HomeFilters => ({
+const defaultFilters: HomeFilters = {
   nameQuery: "",
-  deviceQuery: "",
-  anomalyRange: emptyRange(),
-  deniedRateRange: emptyRange(),
-  afterHoursRateRange: emptyRange(),
-  weekendRateRange: emptyRange(),
-  shannonEntropyRange: emptyRange(),
-  uniqueDeviceCountRange: emptyRange(),
-  uniqueDeviceStdDevRange: emptyRange(),
-  rapidBadgingCountRange: emptyRange(),
-  daysActiveRange: emptyRange(),
-  denialReasons: [],
-});
-
-const toNumber = (value: string) => {
-  const trimmed = value.trim();
-  if (trimmed === "") return null;
-  const parsed = Number(trimmed);
-  return Number.isNaN(parsed) ? null : parsed;
+  status: "all",
 };
 
-const inRange = (value: number, range: RangeFilter) => {
-  const min = toNumber(range.min);
-  const max = toNumber(range.max);
-  if (min !== null && value < min) return false;
-  if (max !== null && value > max) return false;
-  return true;
-};
-
-const hasRange = (range: RangeFilter) => range.min !== "" || range.max !== "";
-
-const rangeLabel = (label: string, range: RangeFilter) => {
-  const min = range.min !== "" ? range.min : "min";
-  const max = range.max !== "" ? range.max : "max";
-  return `${label}: ${min}-${max}`;
-};
-
-const sortRows = (rows: MonthlyPersonSummary[], key: SortKey, dir: SortDirection) => {
+const sortRows = (rows: JoinedRow[], key: SortKey, dir: SortDirection) => {
   const next = [...rows];
-  const getNumericValue = (row: MonthlyPersonSummary, key: SortKey) => {
-    switch (key) {
-      case "anomalyScore":
-        return row.anomalyScore;
-      case "shannonEntropy":
-        return row.shannonEntropy;
-      case "deniedRate":
-        return row.deniedRate;
-      case "afterHoursRate":
-        return row.afterHoursRate;
-      case "weekendRate":
-        return row.weekendRate;
-      case "uniqueDeviceCount":
-        return row.uniqueDeviceCount;
-      case "rapidBadgingCount":
-        return row.rapidBadgingCount;
-      default:
-        return row.badgedDays.length;
-    }
-  };
-
-  next.sort((a, b) => {
-    const order = dir === "asc" ? 1 : -1;
-    if (key === "name") return order * a.name.localeCompare(b.name);
-    if (key === "lastEventTimestamp") {
-      const at = new Date(a.lastEventTimestamp).getTime();
-      const bt = new Date(b.lastEventTimestamp).getTime();
-      return order * (at - bt);
-    }
-    return order * (getNumericValue(a, key) - getNumericValue(b, key));
-  });
+  const order = dir === "asc" ? 1 : -1;
+  next.sort((a, b) => order * (Number(a[key]) - Number(b[key])));
   return next;
 };
 
 export const HomeScreen = ({
+  rows,
+  activeMonthKey,
+  monthOptions,
+  onMonthChange,
   onSelectPerson,
   onNavigate,
-  activeMonthKey,
-  onMonthChange,
 }: HomeScreenProps) => {
-  const [filters, setFilters] = useState<HomeFilters>(() => defaultFilters());
+  const [filters, setFilters] = useState<HomeFilters>(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>("anomalyScore");
-  const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("iforest_score");
+  const [sortDir, setSortDir] = useState<SortDirection>("asc");
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const monthOptions = useMemo(() => listMonthKeys(badgeEvents), []);
-
-  const monthlyRows = useMemo(
-    () => buildMonthlySummaries(peopleBase, badgeEvents, activeMonthKey),
-    [activeMonthKey],
-  );
   const rosterOptions = useMemo(
     () =>
-      monthlyRows.map((person) => ({
-        value: person.personId,
-        label: person.name,
+      rows.map((person) => ({
+        value: person.cardholder_name,
+        label: person.cardholder_name,
       })),
-    [monthlyRows],
+    [rows],
   );
 
   const filteredRows = useMemo(() => {
     const nameQuery = filters.nameQuery.trim().toLowerCase();
-    const deviceQuery = filters.deviceQuery.trim().toLowerCase();
-    return monthlyRows.filter((row) => {
-      if (nameQuery && !row.name.toLowerCase().includes(nameQuery)) return false;
-      if (deviceQuery) {
-        const matchesDevice = row.uniqueDevices.some((device) =>
-          device.toLowerCase().includes(deviceQuery),
-        );
-        if (!matchesDevice) return false;
-      }
-      if (!inRange(row.anomalyScore, filters.anomalyRange)) return false;
-      if (!inRange(row.deniedRate, filters.deniedRateRange)) return false;
-      if (!inRange(row.afterHoursRate, filters.afterHoursRateRange)) return false;
-      if (!inRange(row.weekendRate, filters.weekendRateRange)) return false;
-      if (!inRange(row.shannonEntropy, filters.shannonEntropyRange)) return false;
-      if (!inRange(row.uniqueDeviceCount, filters.uniqueDeviceCountRange)) return false;
-      if (!inRange(row.uniqueDeviceStdDev, filters.uniqueDeviceStdDevRange)) return false;
-      if (!inRange(row.rapidBadgingCount, filters.rapidBadgingCountRange)) return false;
-      if (!inRange(row.badgedDays.length, filters.daysActiveRange)) return false;
-      if (filters.denialReasons.length > 0) {
-        const reasonSet = new Set(row.denialReasons.map((reason) => reason.reason));
-        const matches = filters.denialReasons.some((reason) => reasonSet.has(reason));
-        if (!matches) return false;
-      }
+    return rows.filter((row) => {
+      if (nameQuery && !row.cardholder_name.toLowerCase().includes(nameQuery)) return false;
+      if (filters.status === "flagged" && row.is_anomaly !== 1) return false;
+      if (filters.status === "normal" && row.is_anomaly !== 0) return false;
       return true;
     });
-  }, [filters, monthlyRows]);
+  }, [filters, rows]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.nameQuery.trim()) count += 1;
+    if (filters.status !== "all") count += 1;
+    return count;
+  }, [filters]);
 
   const sortedRows = useMemo(
     () => sortRows(filteredRows, sortKey, sortDir),
     [filteredRows, sortKey, sortDir],
   );
-  const pageSize = 100;
-  const pageRows = useMemo(() => sortedRows.slice(0, pageSize), [sortedRows]);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filters.nameQuery.trim()) count += 1;
-    if (filters.deviceQuery.trim()) count += 1;
-    if (hasRange(filters.anomalyRange)) count += 1;
-    if (hasRange(filters.deniedRateRange)) count += 1;
-    if (hasRange(filters.afterHoursRateRange)) count += 1;
-    if (hasRange(filters.weekendRateRange)) count += 1;
-    if (hasRange(filters.shannonEntropyRange)) count += 1;
-    if (hasRange(filters.uniqueDeviceCountRange)) count += 1;
-    if (hasRange(filters.uniqueDeviceStdDevRange)) count += 1;
-    if (hasRange(filters.rapidBadgingCountRange)) count += 1;
-    if (hasRange(filters.daysActiveRange)) count += 1;
-    if (filters.denialReasons.length > 0) count += 1;
-    return count;
-  }, [filters]);
-
-  const activatePerson = (personId: string) => {
-    onSelectPerson(personId);
-    onNavigate("profile");
-    setHighlightedId(personId);
-    window.setTimeout(() => setHighlightedId(null), 700);
-  };
-
-  const onRowKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, personId: string) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      activatePerson(personId);
-    }
-  };
+  const pageRows = useMemo(() => sortedRows.slice(0, 100), [sortedRows]);
 
   const onSort = (key: SortKey) => {
     setSortKey((current) => {
@@ -223,15 +98,18 @@ export const HomeScreen = ({
     });
   };
 
-  const clearFilters = () => setFilters(defaultFilters());
+  const activatePerson = (personId: string) => {
+    onSelectPerson(personId);
+    onNavigate("profile");
+    setHighlightedId(personId);
+    window.setTimeout(() => setHighlightedId(null), 700);
+  };
 
-  const toggleReason = (reason: DenialReason) => {
-    setFilters((prev) => {
-      const next = prev.denialReasons.includes(reason)
-        ? prev.denialReasons.filter((item) => item !== reason)
-        : [...prev.denialReasons, reason];
-      return { ...prev, denialReasons: next };
-    });
+  const onRowKeyDown = (event: React.KeyboardEvent<HTMLElement>, personId: string) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activatePerson(personId);
+    }
   };
 
   return (
@@ -239,6 +117,10 @@ export const HomeScreen = ({
       <div className="home-layout">
         <div className="home-main">
           <div className="home-toolbar">
+            <div>
+              <div className="home-title">Monthly Personnel Roster</div>
+              <div className="home-subtitle">Active month: {activeMonthKey}</div>
+            </div>
             <button
               ref={filterButtonRef}
               type="button"
@@ -264,120 +146,68 @@ export const HomeScreen = ({
                 onRemove={() => setFilters((prev) => ({ ...prev, nameQuery: "" }))}
               />
             )}
-            {filters.deviceQuery && (
+            {filters.status !== "all" && (
               <FilterChip
-                label={`Device: ${filters.deviceQuery}`}
-                onRemove={() => setFilters((prev) => ({ ...prev, deviceQuery: "" }))}
+                label={`Status: ${filters.status}`}
+                onRemove={() => setFilters((prev) => ({ ...prev, status: "all" }))}
               />
             )}
-            {hasRange(filters.anomalyRange) && (
-              <FilterChip
-                label={rangeLabel("Anomaly", filters.anomalyRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, anomalyRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.deniedRateRange) && (
-              <FilterChip
-                label={rangeLabel("Denied", filters.deniedRateRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, deniedRateRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.afterHoursRateRange) && (
-              <FilterChip
-                label={rangeLabel("After-Hours", filters.afterHoursRateRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, afterHoursRateRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.weekendRateRange) && (
-              <FilterChip
-                label={rangeLabel("Weekend", filters.weekendRateRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, weekendRateRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.shannonEntropyRange) && (
-              <FilterChip
-                label={rangeLabel("Entropy", filters.shannonEntropyRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, shannonEntropyRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.uniqueDeviceCountRange) && (
-              <FilterChip
-                label={rangeLabel("Devices", filters.uniqueDeviceCountRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, uniqueDeviceCountRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.uniqueDeviceStdDevRange) && (
-              <FilterChip
-                label={rangeLabel("Device StdDev", filters.uniqueDeviceStdDevRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, uniqueDeviceStdDevRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.rapidBadgingCountRange) && (
-              <FilterChip
-                label={rangeLabel("Rapid", filters.rapidBadgingCountRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, rapidBadgingCountRange: emptyRange() }))
-                }
-              />
-            )}
-            {hasRange(filters.daysActiveRange) && (
-              <FilterChip
-                label={rangeLabel("Days Active", filters.daysActiveRange)}
-                onRemove={() =>
-                  setFilters((prev) => ({ ...prev, daysActiveRange: emptyRange() }))
-                }
-              />
-            )}
-            {filters.denialReasons.map((reason) => (
-              <FilterChip
-                key={reason}
-                label={reason}
-                onRemove={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    denialReasons: prev.denialReasons.filter((item) => item !== reason),
-                  }))
-                }
-              />
-            ))}
+          </div>
+
+          <div className="sort-row">
+            <button
+              type="button"
+              className={`sort-pill ${sortKey === "iforest_score" ? "sort-pill--active" : ""}`.trim()}
+              onClick={() => onSort("iforest_score")}
+            >
+              iForest {sortKey === "iforest_score" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </button>
+            <button
+              type="button"
+              className={`sort-pill ${sortKey === "denial_rate" ? "sort-pill--active" : ""}`.trim()}
+              onClick={() => onSort("denial_rate")}
+            >
+              Denied {sortKey === "denial_rate" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </button>
+            <button
+              type="button"
+              className={`sort-pill ${sortKey === "off_hours_ratio" ? "sort-pill--active" : ""}`.trim()}
+              onClick={() => onSort("off_hours_ratio")}
+            >
+              Off Hours {sortKey === "off_hours_ratio" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </button>
+            <button
+              type="button"
+              className={`sort-pill ${sortKey === "weekend_ratio" ? "sort-pill--active" : ""}`.trim()}
+              onClick={() => onSort("weekend_ratio")}
+            >
+              Weekend {sortKey === "weekend_ratio" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </button>
+            <button
+              type="button"
+              className={`sort-pill ${sortKey === "count_events" ? "sort-pill--active" : ""}`.trim()}
+              onClick={() => onSort("count_events")}
+            >
+              Events {sortKey === "count_events" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            </button>
           </div>
 
           <Panel title="Personnel" className="panel--ghost">
-            <RosterTable
+            <RosterCards
               rows={pageRows}
-              sortKey={sortKey}
-              sortDir={sortDir}
-              onSort={onSort}
               highlightedId={highlightedId}
               onActivatePerson={activatePerson}
               onRowKeyDown={onRowKeyDown}
               formatters={{
                 formatNumber,
-                formatPercent,
+                formatRate,
                 formatScore,
-                formatAnomalyScore,
-                formatAnomalyScoreFull,
-                formatDate,
-                formatTime,
               }}
             />
           </Panel>
         </div>
       </div>
+
       <FilterDrawer
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}
@@ -423,402 +253,32 @@ export const HomeScreen = ({
                 type="text"
                 placeholder="Search personnel"
                 value={filters.nameQuery}
-                onChange={(event) => setFilters((prev) => ({ ...prev, nameQuery: event.target.value }))}
-              />
-            </label>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Device Search</div>
-            <label className="input">
-              <input
-                type="text"
-                placeholder="Search device IDs"
-                value={filters.deviceQuery}
                 onChange={(event) =>
-                  setFilters((prev) => ({ ...prev, deviceQuery: event.target.value }))
+                  setFilters((prev) => ({ ...prev, nameQuery: event.target.value }))
                 }
               />
             </label>
           </div>
 
           <div className="filter-section">
-            <div className="filter-title">Anomaly Score</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={-1}
-                  max={1}
-                  step="0.01"
-                  placeholder="Min"
-                  value={filters.anomalyRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      anomalyRange: { ...prev.anomalyRange, min: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={-1}
-                  max={1}
-                  step="0.01"
-                  placeholder="Max"
-                  value={filters.anomalyRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      anomalyRange: { ...prev.anomalyRange, max: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Denied Rate</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  placeholder="Min"
-                  value={filters.deniedRateRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      deniedRateRange: { ...prev.deniedRateRange, min: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  placeholder="Max"
-                  value={filters.deniedRateRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      deniedRateRange: { ...prev.deniedRateRange, max: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">After-Hours Rate</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  placeholder="Min"
-                  value={filters.afterHoursRateRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      afterHoursRateRange: {
-                        ...prev.afterHoursRateRange,
-                        min: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  placeholder="Max"
-                  value={filters.afterHoursRateRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      afterHoursRateRange: {
-                        ...prev.afterHoursRateRange,
-                        max: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Weekend Rate</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  placeholder="Min"
-                  value={filters.weekendRateRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      weekendRateRange: { ...prev.weekendRateRange, min: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  placeholder="Max"
-                  value={filters.weekendRateRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      weekendRateRange: { ...prev.weekendRateRange, max: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Shannon Entropy</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  placeholder="Min"
-                  value={filters.shannonEntropyRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      shannonEntropyRange: {
-                        ...prev.shannonEntropyRange,
-                        min: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  placeholder="Max"
-                  value={filters.shannonEntropyRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      shannonEntropyRange: {
-                        ...prev.shannonEntropyRange,
-                        max: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Unique Device Count</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="Min"
-                  value={filters.uniqueDeviceCountRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      uniqueDeviceCountRange: {
-                        ...prev.uniqueDeviceCountRange,
-                        min: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="Max"
-                  value={filters.uniqueDeviceCountRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      uniqueDeviceCountRange: {
-                        ...prev.uniqueDeviceCountRange,
-                        max: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Unique Device Std Dev</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  placeholder="Min"
-                  value={filters.uniqueDeviceStdDevRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      uniqueDeviceStdDevRange: {
-                        ...prev.uniqueDeviceStdDevRange,
-                        min: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  placeholder="Max"
-                  value={filters.uniqueDeviceStdDevRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      uniqueDeviceStdDevRange: {
-                        ...prev.uniqueDeviceStdDevRange,
-                        max: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Rapid Badging Count</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="Min"
-                  value={filters.rapidBadgingCountRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      rapidBadgingCountRange: {
-                        ...prev.rapidBadgingCountRange,
-                        min: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="Max"
-                  value={filters.rapidBadgingCountRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      rapidBadgingCountRange: {
-                        ...prev.rapidBadgingCountRange,
-                        max: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Days Active</div>
-            <div className="range-row">
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="Min"
-                  value={filters.daysActiveRange.min}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      daysActiveRange: { ...prev.daysActiveRange, min: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-              <span className="arrow">to</span>
-              <label className="input">
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="Max"
-                  value={filters.daysActiveRange.max}
-                  onChange={(event) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      daysActiveRange: { ...prev.daysActiveRange, max: event.target.value },
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-section">
-            <div className="filter-title">Denial Reasons</div>
-            <div className="checkbox-list">
-              {denialReasonOptions.map((reason) => (
-                <label key={reason} className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={filters.denialReasons.includes(reason)}
-                    onChange={() => toggleReason(reason)}
-                  />
-                  <span>{reason}</span>
-                </label>
-              ))}
-            </div>
+            <div className="filter-title">Anomaly Status</div>
+            <label className="select">
+              <select
+                value={filters.status}
+                onChange={(event) =>
+                  setFilters((prev) => ({ ...prev, status: event.target.value as StatusFilter }))
+                }
+                aria-label="Filter by anomaly status"
+              >
+                <option value="all">All statuses</option>
+                <option value="flagged">Flagged</option>
+                <option value="normal">Normal</option>
+              </select>
+            </label>
           </div>
 
           <div className="filter-actions">
-            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+            <button type="button" className="btn btn--ghost" onClick={() => setFilters(defaultFilters)}>
               Clear All
             </button>
           </div>

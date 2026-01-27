@@ -66,7 +66,7 @@ export const FilterDrawer = ({
 
   useEffect(() => {
     if (isOpen) return;
-    if (restoreFocusRef?.current) restoreFocusRef.current.focus();
+    restoreFocusRef?.current?.focus();
   }, [isOpen, restoreFocusRef]);
 
   return (

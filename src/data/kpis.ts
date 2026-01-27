@@ -1,101 +1,71 @@
 export type KpiId =
-  | "anomalyScore"
-  | "isolationForest"
-  | "shannonEntropy"
-  | "deniedRate"
-  | "afterHoursRate"
-  | "weekendRate"
-  | "uniqueDeviceRatio";
+  | "iforestScore"
+  | "denialRate"
+  | "offHoursRatio"
+  | "weekendRatio"
+  | "countEvents";
 
 export type KpiDefinition = {
   id: KpiId;
   label: string;
   shortLabel?: string;
-  format: "percent" | "number" | "ratio";
+  format: "percent" | "number";
   precision: number;
   meaning: string;
   calculation: string;
   formula: string;
   interpretation: string;
-  thresholds?: { low: number; medium: number; high: number };
 };
 
 export const kpiDefinitions: Record<KpiId, KpiDefinition> = {
-  anomalyScore: {
-    id: "anomalyScore",
-    label: "Anomaly Score",
-    format: "number",
-    precision: 0,
-    meaning: "Composite risk indicator derived from multiple badge behavior signals.",
-    calculation: "Weighted blend of denial rate, entropy, after-hours, new locations, and device variance.",
-    formula: "score = normalize(weightedFactors) * 100",
-    interpretation: "Higher scores indicate more unusual or higher-risk access patterns.",
-    thresholds: { low: 0, medium: 60, high: 75 },
-  },
-  isolationForest: {
-    id: "isolationForest",
+  iforestScore: {
+    id: "iforestScore",
     label: "Isolation Forest",
     format: "number",
-    precision: 2,
-    meaning: "Model-derived anomaly score on a 0–10 scale.",
-    calculation: "Synthetic isolation model output normalized to a 0–10 range.",
-    formula: "score = normalize(modelOutput) * 10",
-    interpretation: "Higher values indicate greater isolation from typical patterns.",
-    thresholds: { low: 0, medium: 6, high: 8 },
+    precision: 3,
+    meaning: "Model score where higher values indicate more typical behavior.",
+    calculation: "Direct model output from isolation forest.",
+    formula: "iforest_score",
+    interpretation: "Lower values indicate more unusual patterns.",
   },
-  shannonEntropy: {
-    id: "shannonEntropy",
-    label: "Shannon Entropy",
-    format: "number",
-    precision: 2,
-    meaning: "Measures diversity of scanner usage over time.",
-    calculation: "Entropy over scanner distribution for the person.",
-    formula: "-sum(p_i * log2(p_i))",
-    interpretation: "Higher entropy means more varied or unpredictable access locations.",
-    thresholds: { low: 0, medium: 1.8, high: 2.6 },
-  },
-  deniedRate: {
-    id: "deniedRate",
-    label: "Denied Rate",
+  denialRate: {
+    id: "denialRate",
+    label: "Denial Rate",
     format: "percent",
     precision: 1,
     meaning: "Share of badge attempts that were denied.",
-    calculation: "Denied attempts divided by total badge events.",
-    formula: "deniedCount / totalEvents",
-    interpretation: "Higher rates may indicate access issues or suspicious attempts.",
-    thresholds: { low: 0, medium: 8, high: 14 },
+    calculation: "Denied_count / count_events.",
+    formula: "denial_rate",
+    interpretation: "Higher rates can indicate access issues or anomalies.",
   },
-  afterHoursRate: {
-    id: "afterHoursRate",
-    label: "After-Hours Rate",
+  offHoursRatio: {
+    id: "offHoursRatio",
+    label: "Off-Hours Ratio",
     format: "percent",
     precision: 1,
-    meaning: "Share of events occurring outside standard hours.",
-    calculation: "After-hours events divided by total events.",
-    formula: "afterHoursEvents / totalEvents",
-    interpretation: "Sustained high after-hours activity can warrant review.",
-    thresholds: { low: 0, medium: 12, high: 20 },
+    meaning: "Share of events outside normal working hours.",
+    calculation: "off_hours_count / count_events.",
+    formula: "off_hours_ratio",
+    interpretation: "Higher values indicate more after-hours activity.",
   },
-  weekendRate: {
-    id: "weekendRate",
-    label: "Weekend Rate",
+  weekendRatio: {
+    id: "weekendRatio",
+    label: "Weekend Ratio",
     format: "percent",
     precision: 1,
-    meaning: "Share of badge activity that occurs on weekends.",
-    calculation: "Weekend events divided by total events.",
-    formula: "weekendEvents / totalEvents",
-    interpretation: "Contextual by role; unusually high rates can be atypical.",
-    thresholds: { low: 0, medium: 10, high: 18 },
+    meaning: "Share of events on weekends.",
+    calculation: "weekend_count / count_events.",
+    formula: "weekend_ratio",
+    interpretation: "Higher values indicate more weekend activity.",
   },
-  uniqueDeviceRatio: {
-    id: "uniqueDeviceRatio",
-    label: "Unique Device Ratio",
-    format: "ratio",
-    precision: 2,
-    meaning: "Measures how many distinct devices are used per event.",
-    calculation: "Unique device IDs divided by total events.",
-    formula: "uniqueDeviceIds / totalEvents",
-    interpretation: "High ratios may indicate device hopping or badge sharing.",
-    thresholds: { low: 0, medium: 0.4, high: 0.7 },
+  countEvents: {
+    id: "countEvents",
+    label: "Total Events",
+    format: "number",
+    precision: 0,
+    meaning: "Total badge events recorded this month.",
+    calculation: "Sum of all badge events.",
+    formula: "count_events",
+    interpretation: "Higher counts indicate higher activity volume.",
   },
 };
