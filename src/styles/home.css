@@ -61,6 +61,9 @@
   text-transform: uppercase;
   letter-spacing: 0.6px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: background-color var(--t-fast) var(--ease-out),
     border-color var(--t-fast) var(--ease-out),
     color var(--t-fast) var(--ease-out);
@@ -76,6 +79,21 @@
   color: var(--accent-primary);
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 1px rgba(89, 214, 255, 0.2);
+}
+
+.sort-pill__label {
+  line-height: 1;
+}
+
+.sort-pill__dir {
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.sort-pill--asc .sort-pill__dir,
+.sort-pill--desc .sort-pill__dir {
+  opacity: 0.9;
 }
 
 .filters-panel {

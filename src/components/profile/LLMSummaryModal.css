@@ -1,27 +1,27 @@
-.llm-modal__body {
+.llmSummaryModal .llm-modal__body {
   gap: var(--space-3);
 }
 
-.llm-report {
+.llmSummaryModal .llm-report {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-.llm-status-reason {
+.llmSummaryModal .llm-status-reason {
   margin-top: var(--space-2);
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
-.llm-section {
+.llmSummaryModal .llm-section {
   padding: var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--surface-2);
 }
 
-.llm-section__title {
+.llmSummaryModal .llm-section__title {
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -29,7 +29,7 @@
   margin-bottom: var(--space-2);
 }
 
-.llm-section__subtitle {
+.llmSummaryModal .llm-section__subtitle {
   font-size: var(--text-xs);
   color: var(--text-secondary);
   margin-bottom: var(--space-1);
@@ -37,12 +37,12 @@
   letter-spacing: 0.6px;
 }
 
-.llm-section__text {
+.llmSummaryModal .llm-section__text {
   font-size: var(--text-sm);
   color: var(--text-primary);
 }
 
-.llm-section__list {
+.llmSummaryModal .llm-section__list {
   margin: 0;
   padding-left: var(--space-4);
   display: flex;
@@ -52,36 +52,42 @@
   font-size: var(--text-sm);
 }
 
-.llm-findings {
+.llmSummaryModal .llm-findings {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-.llm-finding {
-  padding: var(--space-2);
+.llmSummaryModal .llm-finding {
+  padding: var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--panel-bg);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  transition: border-color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
-.llm-finding__title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
+.llmSummaryModal .llm-finding:hover {
+  border-color: var(--border-default);
+  background: var(--surface-3);
 }
 
-.llm-finding__header {
+.llmSummaryModal .llm-finding__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
 }
 
-.llm-finding__takeaway {
+.llmSummaryModal .llm-finding__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.llmSummaryModal .llm-finding__takeaway {
   padding: var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--surface-3);
@@ -92,12 +98,12 @@
   font-weight: 500;
 }
 
-.llm-finding__meta {
+.llmSummaryModal .llm-finding__meta {
   font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
-.llm-finding__metaRow {
+.llmSummaryModal .llm-finding__metaRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--space-2);
@@ -105,7 +111,7 @@
   color: var(--text-muted);
 }
 
-.llm-finding__metaRow span:first-child {
+.llmSummaryModal .llm-finding__metaRow span:first-child {
   display: block;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -113,18 +119,18 @@
   color: var(--text-muted);
 }
 
-.llm-finding__metaRow span:last-child {
+.llmSummaryModal .llm-finding__metaRow span:last-child {
   display: block;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.llm-finding__caveat {
+.llmSummaryModal .llm-finding__caveat {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
-.llm-finding__row {
+.llmSummaryModal .llm-finding__row {
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
@@ -132,7 +138,7 @@
   color: var(--text-secondary);
 }
 
-.llm-badge {
+.llmSummaryModal .llm-badge {
   align-self: flex-start;
   padding: 2px 8px;
   border-radius: 999px;
@@ -144,51 +150,107 @@
   background: var(--surface-3);
 }
 
-.llm-badge--muted {
+.llmSummaryModal .llm-badge--muted {
   color: var(--text-muted);
 }
 
-.llm-muted {
+.llmSummaryModal .llmPrimaryBadge,
+.llmSummaryModal .llmPeerBadge,
+.llmSummaryModal .llmFindingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.llmSummaryModal .llmPrimaryBadge--danger,
+.llmSummaryModal .llmPeerBadge--danger,
+.llmSummaryModal .llmFindingBadge--danger {
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+}
+
+.llmSummaryModal .llmPrimaryBadge--warn,
+.llmSummaryModal .llmPeerBadge--warn,
+.llmSummaryModal .llmFindingBadge--warn {
+  background: var(--status-warn-bg);
+  border-color: var(--status-warn);
+  color: var(--status-warn);
+}
+
+.llmSummaryModal .llmPrimaryBadge--good,
+.llmSummaryModal .llmPeerBadge--good,
+.llmSummaryModal .llmFindingBadge--good {
+  background: var(--status-ok-bg);
+  border-color: var(--status-ok);
+  color: var(--status-ok);
+}
+
+.llmSummaryModal .llmFindingBadge--neutral {
+  background: var(--surface-3);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.llmSummaryModal .llmPeerBadge--neutral {
+  background: var(--surface-3);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.llmSummaryModal .llmPeerBadge {
+  font-size: var(--text-xs);
+  text-transform: none;
+  letter-spacing: 0.2px;
+}
+
+.llmSummaryModal .llm-muted {
   color: var(--text-muted);
 }
 
-.llm-section__kv {
+.llmSummaryModal .llm-section__kv {
   display: grid;
   gap: var(--space-2);
 }
 
-.llm-kv {
+.llmSummaryModal .llm-kv {
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
   font-size: var(--text-sm);
 }
 
-.llm-kv__key {
+.llmSummaryModal .llm-kv__key {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.6px;
   font-size: var(--text-xs);
 }
 
-.llm-kv__value {
+.llmSummaryModal .llm-kv__value {
   color: var(--text-primary);
 }
 
-.llm-actions {
+.llmSummaryModal .llm-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
 
-.llm-raw summary {
+.llmSummaryModal .llm-raw summary {
   cursor: pointer;
   color: var(--text-secondary);
   font-size: var(--text-xs);
 }
 
-.llm-raw pre {
+.llmSummaryModal .llm-raw pre {
   margin-top: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius-sm);

@@ -26,6 +26,10 @@ type HomeFilters = {
 
 type SortKey = "iforest_score" | "denial_rate" | "off_hours_ratio" | "weekend_ratio" | "count_events";
 type SortDirection = "asc" | "desc";
+type SortState = {
+  key: SortKey | null;
+  direction: SortDirection;
+};
 
 const defaultFilters: HomeFilters = {
   nameQuery: "",
@@ -50,8 +54,10 @@ export const HomeScreen = ({
   const [filters, setFilters] = useState<HomeFilters>(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("iforest_score");
-  const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [sortState, setSortState] = useState<SortState>({
+    key: "iforest_score",
+    direction: "desc",
+  });
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const rosterOptions = useMemo(
@@ -80,21 +86,19 @@ export const HomeScreen = ({
     return count;
   }, [filters]);
 
-  const sortedRows = useMemo(
-    () => sortRows(filteredRows, sortKey, sortDir),
-    [filteredRows, sortKey, sortDir],
-  );
+  const sortedRows = useMemo(() => {
+    if (!sortState.key) return filteredRows;
+    return sortRows(filteredRows, sortState.key, sortState.direction);
+  }, [filteredRows, sortState]);
 
   const pageRows = useMemo(() => sortedRows.slice(0, 100), [sortedRows]);
 
   const onSort = (key: SortKey) => {
-    setSortKey((current) => {
-      if (current === key) {
-        setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
-        return current;
+    setSortState((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
       }
-      setSortDir("desc");
-      return key;
+      return { key, direction: "desc" };
     });
   };
 
@@ -155,41 +159,34 @@ export const HomeScreen = ({
           </div>
 
           <div className="sort-row">
-            <button
-              type="button"
-              className={`sort-pill ${sortKey === "iforest_score" ? "sort-pill--active" : ""}`.trim()}
-              onClick={() => onSort("iforest_score")}
-            >
-              iForest {sortKey === "iforest_score" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-            </button>
-            <button
-              type="button"
-              className={`sort-pill ${sortKey === "denial_rate" ? "sort-pill--active" : ""}`.trim()}
-              onClick={() => onSort("denial_rate")}
-            >
-              Denied {sortKey === "denial_rate" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-            </button>
-            <button
-              type="button"
-              className={`sort-pill ${sortKey === "off_hours_ratio" ? "sort-pill--active" : ""}`.trim()}
-              onClick={() => onSort("off_hours_ratio")}
-            >
-              Off Hours {sortKey === "off_hours_ratio" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-            </button>
-            <button
-              type="button"
-              className={`sort-pill ${sortKey === "weekend_ratio" ? "sort-pill--active" : ""}`.trim()}
-              onClick={() => onSort("weekend_ratio")}
-            >
-              Weekend {sortKey === "weekend_ratio" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-            </button>
-            <button
-              type="button"
-              className={`sort-pill ${sortKey === "count_events" ? "sort-pill--active" : ""}`.trim()}
-              onClick={() => onSort("count_events")}
-            >
-              Events {sortKey === "count_events" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-            </button>
+            {([
+              { key: "iforest_score", label: "iForest" },
+              { key: "denial_rate", label: "Denied" },
+              { key: "off_hours_ratio", label: "Off Hours" },
+              { key: "weekend_ratio", label: "Weekend" },
+              { key: "count_events", label: "Events" },
+            ] as const).map((item) => {
+              const isActive = sortState.key === item.key;
+              const dir = sortState.direction;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`sort-pill ${
+                    isActive ? `sort-pill--active sort-pill--${dir}` : ""
+                  }`.trim()}
+                  onClick={() => onSort(item.key)}
+                  aria-pressed={isActive}
+                >
+                  <span className="sort-pill__label">{item.label}</span>
+                  {isActive && (
+                    <span className="sort-pill__dir" aria-hidden="true">
+                      {dir === "asc" ? "▲" : "▼"}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <Panel title="Personnel" className="panel--ghost">

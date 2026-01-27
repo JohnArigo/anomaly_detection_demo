@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { EmptyState } from "../ui/EmptyState";
-import { anomalyLabel, getAnomalyStatus } from "../../utils/severity";
+import { getAnomalyStatus } from "../../utils/severity";
 import { formatScore } from "../../utils/format";
 import { parseJsonSafely } from "../../utils/json";
 import { formatDate, formatTime } from "../../utils/date";
@@ -18,12 +18,94 @@ type LLMSummaryModalProps = {
 };
 
 type ReportObject = Record<string, unknown>;
+type Tone = "danger" | "warn" | "good" | "neutral";
+type PeerContext = { label: string; tone: "warn" | "good" | "neutral"; limited: boolean };
 
 const isRecord = (value: unknown): value is ReportObject =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
 const getString = (value: unknown) => (value === undefined || value === null ? "" : String(value));
 const getBool = (value: unknown) => Boolean(value);
+
+const includesAny = (value: string, terms: string[]) =>
+  terms.some((term) => value.includes(term));
+
+const getDetectionStatus = (isAnomaly: number) => {
+  if (isAnomaly === 1) {
+    return { label: "FLAGGED", tone: "danger" as const };
+  }
+  return { label: "NORMAL", tone: "good" as const };
+};
+
+const getPeerContextLabel = (report: ReportObject): PeerContext | null => {
+  const meta = isRecord(report.meta) ? report.meta : null;
+  const status = meta && isRecord(meta.status) ? meta.status : null;
+  const label = status ? getString(status.label).toLowerCase() : "";
+  const neighbor = meta && isRecord(meta.neighbor_baseline) ? meta.neighbor_baseline : null;
+  const kValue = neighbor?.k !== undefined ? Number(neighbor.k) : null;
+  const limited = kValue !== null && kValue < 5;
+
+  if (label) {
+    if (includesAny(label, ["typical", "within", "good"])) {
+      return { label: "Within peer norms", tone: "good", limited };
+    }
+    if (includesAny(label, ["slightly", "unusual", "alert"])) {
+      return { label: "Higher than peers", tone: "warn", limited };
+    }
+  }
+
+  const findings = Array.isArray(report.key_findings) ? report.key_findings : [];
+  let higher = 0;
+  let lower = 0;
+  let neutral = 0;
+  let higherRisk = 0;
+
+  for (const finding of findings) {
+    if (!isRecord(finding)) continue;
+    const direction = getString(finding.direction_vs_peers).toLowerCase();
+    const assessment = getString(finding.assessment).toLowerCase();
+    const riskish = includesAny(assessment, ["higher_than_typical", "strongly", "danger", "anomal", "unusual"]);
+    if (direction === "higher") {
+      higher += 1;
+      if (riskish) higherRisk += 1;
+    } else if (direction === "lower") {
+      lower += 1;
+    } else {
+      neutral += 1;
+    }
+  }
+
+  if (higherRisk > 0) {
+    return { label: "Higher than peers", tone: "warn", limited };
+  }
+  if (higher > 0 && lower > 0) {
+    return { label: "Mixed vs peers", tone: "neutral", limited };
+  }
+  if (higher > 0) {
+    return { label: "Higher than peers", tone: "warn", limited };
+  }
+  if (lower > 0 || neutral > 0) {
+    return { label: "Within peer norms", tone: "good", limited };
+  }
+  return null;
+};
+
+const getFindingTone = (finding: ReportObject): Tone => {
+  const assessment = getString(finding.assessment).toLowerCase();
+  const direction = getString(finding.direction_vs_peers).toLowerCase();
+
+  if (includesAny(assessment, ["higher_than_typical", "strongly", "danger", "anomal"])) {
+    return "danger";
+  }
+  if (includesAny(assessment, ["slightly", "somewhat", "unusual", "higher"])) {
+    return "warn";
+  }
+  if (includesAny(assessment, ["within", "typical", "none"]) || direction === "lower") {
+    return "good";
+  }
+  if (direction === "higher") return "warn";
+  return "neutral";
+};
 
 const renderValue = (value: unknown) => {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
@@ -108,6 +190,8 @@ export const LLMSummaryModal = ({
 
   const status = getAnomalyStatus(isAnomaly);
   const data = parsed.data ?? {};
+  const detectionStatus = getDetectionStatus(isAnomaly);
+  const peerContext = getPeerContextLabel(data);
   const meta = isRecord(data.meta) ? data.meta : null;
   const period = meta && isRecord(meta.period) ? meta.period : null;
   const neighbor = meta && isRecord(meta.neighbor_baseline) ? meta.neighbor_baseline : null;
@@ -122,7 +206,7 @@ export const LLMSummaryModal = ({
   return createPortal(
     <div className="modal-overlay" role="presentation" onMouseDown={onClose}>
       <div
-        className="modal llm-modal"
+        className="modal llm-modal llmSummaryModal"
         role="dialog"
         aria-modal="true"
         ref={modalRef}
@@ -138,7 +222,19 @@ export const LLMSummaryModal = ({
               <span className="modal__metaItem">
                 {String(period?.label ?? monthKey)}
               </span>
-              <span className="modal__metaItem">{anomalyLabel(status)}</span>
+              <span className="modal__metaItem">
+                <span className={`llmPrimaryBadge llmPrimaryBadge--${detectionStatus.tone}`}>
+                  {detectionStatus.label}
+                </span>
+              </span>
+              {peerContext && (
+                <span className="modal__metaItem">
+                  <span className={`llmPeerBadge llmPeerBadge--${peerContext.tone}`}>
+                    Peer context: {peerContext.label}
+                    {peerContext.limited ? " (limited baseline)" : ""}
+                  </span>
+                </span>
+              )}
               <span className="modal__metaItem">iForest {formatScore(iforestScore, 3)}</span>
               {neighbor?.k !== undefined && (
                 <span className="modal__metaItem">Peers: k={String(neighbor.k)}</span>
@@ -205,7 +301,11 @@ export const LLMSummaryModal = ({
                           </div>
                           {(finding as ReportObject).assessment !== undefined &&
                             (finding as ReportObject).assessment !== null && (
-                            <div className="llm-badge llm-badge--muted">
+                            <div
+                              className={`llmFindingBadge llmFindingBadge--${getFindingTone(
+                                finding as ReportObject,
+                              )}`}
+                            >
                               {String((finding as ReportObject).assessment)}
                             </div>
                           )}
