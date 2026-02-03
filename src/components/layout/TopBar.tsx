@@ -17,7 +17,6 @@ export const TopBar = ({
   onNavigate,
   selectedPersonId,
 }: TopBarProps) => {
-  const isProfile = activeView === "profile";
   const hasSelection = Boolean(selectedPersonId);
 
   return (
